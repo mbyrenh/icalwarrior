@@ -136,17 +136,35 @@ def decode_date_formula(formula : str) -> datetime:
 def decode_date(date : str, config : Configuration) -> datetime:
 
     if len(date) == 0:
-        raise InvalidDateFormatError(config.get_date_format())
+        raise InvalidDateFormatError(config.get_date_format() + " or " + config.get_datetime_format())
 
     result = None
-    ## If date starts with number, check if
-    ## it corresponds to configured date format
+
     if date[0].isdigit():
-        try:
-            read_date = datetime.strptime(date, config.get_date_format())
+
+        now = datetime.now()
+        read_date = None
+        # If the date length is at least as long as the datetime format,
+        # check if it is correctly formatted
+        if len(date) == len(now.strftime(config.get_datetime_format())):
+            try:
+                read_date = datetime.strptime(date, config.get_datetime_format())
+            except ValueError:
+                pass
+
+        # If the date length is at least as long as the datetime format,
+        # check if it is correctly formatted
+        if len(date) == len(now.strftime(config.get_date_format())):
+            try:
+                read_date = datetime.strptime(date, config.get_date_format())
+            except ValueError:
+                pass
+
+        if read_date is None:
+                raise InvalidDateFormatError(config.get_date_format() + " or " + config.get_datetime_format())
+        else:
             result = read_date
-        except ValueError as err:
-            raise InvalidDateFormatError(config.get_date_format()) from err
+
 
     ## otherwise, read it as a formula
     else:

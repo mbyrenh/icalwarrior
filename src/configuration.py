@@ -39,6 +39,13 @@ class Configuration:
             result = self.config['calendars']
         return result
 
+    def get_datetime_format(self) -> str:
+        result = self.default_date_format
+        if 'datetimeformat' in self.config:
+            result = self.config['datetimeformat']
+        return result
+
+
     def get_date_format(self) -> str:
         result = self.default_date_format
         if 'dateformat' in self.config:
