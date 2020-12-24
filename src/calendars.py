@@ -20,53 +20,10 @@ class DuplicateCalendarNameError(Exception):
 
 class Calendars:
 
-    index_file = "todo.index"
-
     def __init__(self, config : Configuration) -> None:
         self.config = config
 
         self.calendars = self.scanCalendars()
-
-        # TODO: Read calendars and create mapping from calendar-UID to obj-ID for events and for todos
-        #       And identify missing numbers.
-        if not isdir(self.config.getDataPath()):
-            mkdir(self.config.getDataPath())
-
-        if not isfile(self.config.getDataPath() + "/" + self.index_file):
-            print("Building index...")
-            self.__buildIndex()
-            print("Completed")
-
-        self.__loadIndexes()
-
-    def __loadIndexes(self) -> None:
-
-        with open(self.config.getDataPath() + "/" + self.index_file, 'rb') as indexFile:
-            self.todoIndex = pickle.load(indexFile)
-
-    def __buildIndex(self) -> None:
-
-        assert isdir(self.config.getDataPath())
-
-        evID = 1
-        eventMapping = {}
-        todoID = 1
-        todoMapping = {}
-
-        for currentCalendar in self.calendars:
-            calFiles = listdir(self.calendars[currentCalendar])
-            for calFile in calFiles:
-                with open(self.calendars[currentCalendar] + '/' + calFile, 'r') as icalFile:
-                    iCalendar = icalendar.Calendar.from_ical(icalFile.read())
-                    for event in iCalendar.walk('vevent'):
-                        eventMapping[currentCalendar + "-" + event.get('uid')] = evID
-                        evID += 1
-                    for todo in iCalendar.walk('vtodo'):
-                        todoMapping[currentCalendar + "-" + todo.get('uid')] = todoID
-                        todoID += 1
-
-        with open(self.config.getDataPath() + "/" + self.index_file, 'wb') as indexFile:
-            pickle.dump(todoMapping, indexFile)
 
     def scanCalendars(self) -> Dict[str, str]:
         result = {}
