@@ -1,14 +1,13 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="ical warrior",
+    name="icalwarrior",
     version=0.1,
 
     author="Martin Byrenheid",
     author_email="martin@byrenheid.net",
 
-    packages=find_packages("src"),
-    package_dir={"": "src"},
+    packages=find_packages(include=["icalwarrior", "icalwarrior.*"]),
 
     install_requires=[
         'click',
@@ -19,6 +18,6 @@ setup(
 
     entry_points='''
         [console_scripts]
-        itodo=itodo.__main__:cli
+        todo=icalwarrior.__main__:main
     '''
 )

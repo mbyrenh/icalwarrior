@@ -1,4 +1,4 @@
-from cli import run_cli
+from icalwarrior.cli import run_cli
 
-if __name__ == '__main__':
-  run_cli(params={})
+def main() -> None:
+    run_cli()

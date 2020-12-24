@@ -1,6 +1,6 @@
 from typing import List
 
-from configuration import Configuration
+from icalwarrior.configuration import Configuration
 from datetime import datetime, date
 from dateutil.relativedelta import *
 import calendar

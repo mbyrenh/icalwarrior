@@ -5,8 +5,9 @@ import _pickle as pickle
 
 import icalendar
 
-from todo import Todo
-from configuration import Configuration
+from icalwarrior import __author__,__productname__,__version__
+from icalwarrior.todo import Todo
+from icalwarrior.configuration import Configuration
 
 class DuplicateCalendarNameError(Exception):
 
@@ -22,12 +23,14 @@ class Calendars:
 
     def __init__(self, config : Configuration) -> None:
         self.config = config
+        self.calendars = self.__scan_calendars()
 
-        self.calendars = self.scanCalendars()
+        self.todos = {}
+        self.__read_todos()
 
-    def scanCalendars(self) -> Dict[str, str]:
+    def __scan_calendars(self) -> Dict[str, str]:
         result = {}
-        calDir = self.config.getCalendarDir()
+        calDir = self.config.get_calendar_dir()
         calNames = listdir(calDir)
         for name in calNames:
             calPath = calDir + "/" + name
@@ -37,39 +40,83 @@ class Calendars:
                 result[name] = calPath 
         return result
 
+    def __read_todos(self) -> None:
+
+        for current_calendar in self.calendars:
+
+            self.todos[current_calendar] = []
+
+            cal_files = listdir(self.calendars[current_calendar])
+            for cal_file in cal_files:
+                ical_file = open(self.calendars[current_calendar] + '/' + cal_file, 'r')
+                cal = icalendar.Calendar.from_ical(ical_file.read())
+
+                for todo in cal.walk('vtodo'):
+                    self.todos[current_calendar].append(todo)
+                ical_file.close()
+
+
     def calendarExists(self, calendar : str) -> bool:
         if calendar in self.calendars:
             return True
         else:
             return False
 
-    def getCalendars(self) -> List[str]:
+    def get_calendars(self) -> List[str]:
         return self.calendars.keys()
 
-    def getToDos(self, calendar = None) -> List[Todo]:
+    def is_unique_uid(self, uid : str) -> bool:
 
-        assert calendar is None or self.calendarExists(calendar)
+        result = True
+        todos = self.get_todos()
 
-        relevantCalendars = self.calendars.keys()
-        if not calendar == None:
-            relevantCalendars = [calendar]
-
-        result = []
-
-        for currentCalendar in relevantCalendars:
-            calFiles = listdir(self.calendars[currentCalendar])
-            for calFile in calFiles:
-                icalFile = open(self.calendars[currentCalendar] + '/' + calFile, 'r')
-                iCalendar = icalendar.Calendar.from_ical(icalFile.read())
-                for todo in iCalendar.walk('vtodo'):
-                    result += [Todo(currentCalendar, self.todoIndex[currentCalendar + "-" + todo.get("uid")], todo)]
-                icalFile.close()
+        for todo in todos:
+            if todo['uid'] == uid:
+                result = False
+                break
 
         return result
 
-    def __getNewTodoID(self) -> int:
+    def write_todo(self, calendar : str, todo : icalendar.Todo) -> None:
 
-        existingIDs = set(self.todoIndex.values())
-        IDrange = set(range(1, max(existingIDs)+2))
-        freeID = min(IDrange.difference(existingIDs))
-        return(freeID)
+        assert self.calendarExists(calendar)
+
+        # Since we assume that each todo is stored in a separate calendar,
+        # create a calendar as wrapper for the todo item
+        todo_cal = icalendar.Calendar()
+        todo_cal.add('prodid', '-//' + __author__ + '//' + __productname__ + ' ' + __version__ + '//EN')
+        todo_cal.add_component(todo)
+
+        file_handle = open(self.config.get_calendar_dir() + "/" + calendar + "/" + todo['uid'] + ".ics", "wb")
+        file_handle.write(todo_cal.to_ical())
+        file_handle.close()
+
+    def get_calendar(self, todo : icalendar.Todo) -> str:
+
+        result = ""
+        for cal in self.calendars:
+            todos = self.get_todos(cal)
+
+            for cal_todo in todos:
+
+                if cal_todo['uid'] == todo['uid']:
+                    result = cal
+                    break
+
+        return result
+
+    def get_todos(self, calendar = None) -> List[Todo]:
+
+        assert calendar is None or self.calendarExists(calendar)
+
+        result = []
+
+        relevant_calendars = self.calendars.keys()
+        if calendar is not None:
+            relevant_calendars = [calendar]
+
+        for current_calendar in relevant_calendars:
+            result += self.todos[current_calendar]
+
+        result.sort(key=lambda todo : todo['uid'])
+        return result

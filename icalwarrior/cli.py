@@ -1,14 +1,15 @@
 import sys
 from datetime import datetime
-import random
+import uuid
 
 from typing import List
 
+import icalendar
 import click
-from args import arg_type
-from configuration import Configuration
-from calendars import Calendars
-from todo import Todo
+from icalwarrior.args import arg_type, ArgType
+from icalwarrior.configuration import Configuration
+from icalwarrior.calendars import Calendars
+from icalwarrior.todo import Todo
 
 class InvalidArgumentException(Exception):
 
@@ -20,12 +21,11 @@ class InvalidArgumentException(Exception):
         return ("Unknown property '" + self.arg_name + "'. Supported properties are " + ",".join(self.supported))
 
 @click.group(invoke_without_command=True)
-@click.option('-c', '--config', default=Configuration.getDefaultConfigPath(), help='Path to the configuration file')
+@click.option('-c', '--config', default=Configuration.get_default_config_path(), help='Path to the configuration file')
 @click.pass_context
 def run_cli(ctx, config):
 
     try:
-        print("Config path " + config)
         configuration = Configuration(config)
 
         ctx.ensure_object(dict)
@@ -39,47 +39,80 @@ def run_cli(ctx, config):
 
 @run_cli.command()
 @click.pass_context
+def calendars(ctx):
+    cal = Calendars(ctx.obj['config'])
+
+    for name, path in cal.get_calendars():
+        print(name + " - " + path)
+
+
+@run_cli.command()
+@click.pass_context
 @click.argument('calendar', nargs=1)
-@click.argument('title', nargs=1)
+@click.argument('summary', nargs=1)
 @click.argument('properties',nargs=-1)
-def add(ctx, calendar, title, properties):
+def add(ctx, calendar, summary, properties):
 
-    calendars = Calendars(ctx.obj['config'])
+    cal_db = Calendars(ctx.obj['config'])
+    if len(cal_db.get_calendars()) == 0:
+        print("No calendars found. Please check your configuration.")
+        sys.exit(1)
 
-    if not calendar in calendars:
-        print("Unknown caledar \"" + calendar + ". Known calendars are " + ",".join(calendars))
+    if not cal_db.calendarExists(calendar):
+        print("Unknown calendar \"" + calendar + ". Known calendars are " + ", ".join(cal_db.get_calendars()) + ".")
+        sys.exit(1)
 
-    for arg in properties:
-        argtype = arg_type(arg, Todo.SUPPORTED_PROPERTIES.keys())
+    todo = icalendar.Todo()
 
+    uid = uuid.uuid4()
+    while not cal_db.is_unique_uid(uid):
+        uid = uuid.uuid4()
 
+    todo.add('uid', uid)
+    todo.add('summary', summary)
+    todo.add('status', 'needs-action'.upper())
+    now = datetime.now()
+    todo.add('dtstamp', now, encode=True)
+    todo.add('created', now, encode=True)
 
+    Todo.set_properties(todo, ctx.obj['config'], properties)
 
-#    todo = Todo.fromArgs(args)
-#
-#    # TODO: Check if a calendar is given and the given calendar exists
-#    if (todo.calendarName == None):
-#        click.echo('No calendar given to add the todo to.')
-#        sys.exit(1)
-#    elif (not calendars.calendarExists(todo.calendarName)):
-#        click.echo('Unknown calendar "' + todo.calendarName + '". Available calendars are "' + ', "'.join(calendars.getCalendars()) + '".')
-#        sys.exit(1)
-#    
-#    uid = "".join(random.choices([str(i) for i in range(10)], k=24))
-#    todo.getIcalTodo().add('uid', uid)
-#
-#    now = datetime.now()
-#    todo.getIcalTodo().add('created', now)
-#    todo.getIcalTodo().add('last-modified', now)
-#    todo.getIcalTodo().add('status', 'needs-action'.upper())
-#
-#    todoCal = Calendar()
-#    todoCal.add('prodid', itodo.__productname__ + "/" + itodo.__version__)
-#    todoCal.add('version', '2.0')
-#    todoCal.add_component(todo.getIcalTodo())
-#    click.echo("Adding event")
-#    click.echo(todoCal.to_ical())
-#
-#    fh = open(ctx.obj['config'].getCalendarDir() + "/" + todo.getCalendar() + "/" + uid + ".ics", "wb")
-#    fh.write(todoCal.to_ical())
-#    fh.close()
+    cal_db.write_todo(calendar, todo)
+
+@run_cli.command()
+@click.pass_context
+@click.argument('identifier', nargs=1, type=int)
+@click.argument('properties',nargs=-1)
+def mod(ctx, identifier, properties):
+
+    cal_db = Calendars(ctx.obj['config'])
+    if len(cal_db.get_calendars()) == 0:
+        print("No calendars found. Please check your configuration.")
+        sys.exit(1)
+
+    todos = cal_db.get_todos()
+
+    if identifier > len(todos):
+        print("Invalid identifier " + identifier + ".")
+        sys.exit(1)
+
+    todo = todos[identifier]
+    Todo.set_properties(todo, ctx.obj['config'], properties)
+
+    cal_name = cal_db.get_calendar(todo)
+
+    cal_db.write_todo(cal_name, todo)
+
+@run_cli.command()
+@click.pass_context
+def show(ctx):
+
+    cal_db = Calendars(ctx.obj['config'])
+    if len(cal_db.get_calendars()) == 0:
+        print("No calendars found. Please check your configuration.")
+        sys.exit(1)
+
+    todos = cal_db.get_todos()
+    for i in range(len(todos)):
+        print(str(i) + " " + todos[i]['summary'] + " " + cal_db.get_calendar(todos[i]))
+

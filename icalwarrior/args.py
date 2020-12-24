@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List
 
-from util import expand_prefix
+from icalwarrior.util import expand_prefix
 
 class ArgType(Enum):
     INT = 1

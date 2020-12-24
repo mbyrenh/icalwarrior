@@ -1,8 +1,8 @@
 from typing import List, Set
 from tabulate import tabulate
 import icalendar
-from todo import Todo
-from configuration import Configuration
+from icalwarrior.todo import Todo
+from icalwarrior.configuration import Configuration
 
 class InvalidColumnError(Exception):
 

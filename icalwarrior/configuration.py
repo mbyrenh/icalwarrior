@@ -5,17 +5,14 @@ import yaml
 class Configuration:
 
     default_date_format = "%Y-%m-%d"
+    default_datetime_format = "%Y-%m-%dT%H:%M:%S"
 
     config = None
 
     def __init__(self, configFile : str) -> None:
         config_handle = open(configFile)
         self.config = yaml.load(config_handle, Loader=yaml.Loader)
-        print(self.config)
         config_handle.close()
-
-        print('Config is')
-        print(self.config)
 
     @staticmethod
     def get_default_config_path() -> str:
@@ -40,11 +37,10 @@ class Configuration:
         return result
 
     def get_datetime_format(self) -> str:
-        result = self.default_date_format
+        result = self.default_datetime_format
         if 'datetimeformat' in self.config:
             result = self.config['datetimeformat']
         return result
-
 
     def get_date_format(self) -> str:
         result = self.default_date_format
