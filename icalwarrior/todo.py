@@ -8,16 +8,45 @@ from icalwarrior.configuration import Configuration
 
 class Todo:
 
-    # Each key denotes the parameter name
-    # for the command line parameter and the corresponding
-    # value denotes the ical property name.
-    SUPPORTED_PROPERTIES = {
-        'due' : ('due', decode_date)
+    DATE_PROPERTIES = [
+        'due',
+        'dtstart',
+        'dtend'
+    ]
+
+    TEXT_PROPERTIES = [
+        'summary',
+        'description'
+    ]
+
+    ENUM_PROPERTIES = [
+        'status'
+    ]
+
+    ENUM_VALUES = {
+        'status' : ["needs-action", "completed", "in-process", "cancelled"]
     }
 
-    """Valid status values for VTODO according
-       to RFC 5545, page 92."""
-    STATUS_VALUES = ["needs-action", "completed", "in-process", "cancelled"]
+    @staticmethod
+    def supported_properties() -> List[str]:
+        return Todo.DATE_PROPERTIES + Todo.TEXT_PROPERTIES + Todo.ENUM_PROPERTIES
+
+    @staticmethod
+    def parse_property(config : Configuration, prop_name : str, raw_value : str) -> object:
+
+        result = None
+        if prop_name in Todo.DATE_PROPERTIES:
+            result = decode_date(raw_value, config)
+
+        elif prop_name in Todo.TEXT_PROPERTIES:
+            result = raw_value
+
+        elif prop_name in Todo.ENUM_PROPERTIES:
+
+            if raw_value.lower() in Todo.ENUM_VALUES[prop_name]:
+                    result = raw_value
+
+        return result
 
     @staticmethod
     def set_properties(todo : icalendar.Todo, config : Configuration, raw_properties : List[str]) -> None:
@@ -28,7 +57,7 @@ class Todo:
         modified = False
 
         for arg in raw_properties:
-            argtype = arg_type(arg, Todo.SUPPORTED_PROPERTIES.keys())
+            argtype = arg_type(arg, Todo.supported_properties())
 
             if argtype == ArgType.CATEGORY:
 
@@ -40,9 +69,8 @@ class Todo:
                 arg_name = arg[0:col_pos]
                 arg_raw_value = arg[col_pos+1:]
 
-                prop_name, conv = Todo.SUPPORTED_PROPERTIES[arg_name]
-                arg_value = conv(arg_raw_value, config)
-                todo.add(prop_name, arg_value, encode=True)
+                arg_value = Todo.parse_property(config, arg_name, arg_raw_value)
+                todo.add(arg_name, arg_value, encode=True)
                 modified = True
 
             elif argtype == ArgType.STRING:

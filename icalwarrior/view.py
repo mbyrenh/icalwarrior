@@ -1,52 +1,69 @@
-from typing import List, Set
-from tabulate import tabulate
-import icalendar
-from icalwarrior.todo import Todo
-from icalwarrior.configuration import Configuration
+from typing import List, Set, Union
+import tableformatter
+from colorama import init, Fore, Back, Style
 
-class InvalidColumnError(Exception):
+class ReportGrid(tableformatter.Grid):
 
-    def __init__(self, reportName : str, invalidCol : str, allowedCols : Set[str]) -> None:
-        self.reportName = reportName
-        self.colName = invalidCol
-        self.allowed = allowedCols
+    def __init__(self):
+        super().__init__()
+        self.show_header = True
+        self.border_top = False
 
-    def __str__(self) -> str:
-        return ("Invalid column '" + self.colName + "' for report '" + self.reportName + "'. Allowed columns are " + ",".join([x for x in self.allowed]))
+        self.border_top_left = '╔'
+        self.border_top_span = '═'
+        self.border_top_right = '╗'
+        self.border_top_col_divider = '╤'
+        self.border_top_header_col_divider = '╦'
 
-class TodoPrinter:
+        self.border_header_divider = True
+        self.border_left_header_divider = ''
+        self.border_right_header_divider = ''
+        self.border_header_divider_span = '─'
+        self.border_header_col_divider = '╪'
+        self.border_header_header_col_divider = '╬'
 
-    def __init__(self, config : Configuration, todos : List[Todo], columns : List[str]) -> None:
+        self.border_left = True
+        self.border_left_row_divider = ''
 
-        allowedCols = set(["id", "calendar"]).union(
-            set([s.lower() for s in icalendar.Todo.required]),
-            set([s.lower() for s in icalendar.Todo.singletons]),
-            set([s.lower() for s in icalendar.Todo.multiple])
-        )
-        for column in columns:
-            if not column in allowedCols:
-                raise InvalidColumnError("list", column, allowedCols)
+        self.border_right = True
+        self.border_right_row_divider = ''
 
-        self.config = config
-        self.todos = todos
-        self.columns = columns
+        self.col_divider = False
+        self.row_divider = False
+        self.row_divider_span = '─'
 
-    def print(self) -> None:
+        self.row_divider_col_divider = '┼'
+        self.row_divider_header_col_divider = '╫'
 
-        dataTable = []
+        self.border_bottom = False
+        self.border_bottom_left = '╚'
+        self.border_bottom_right = '╝'
+        self.border_bottom_span = '═'
+        self.border_bottom_col_divider = '╧'
+        self.border_bottom_header_col_divider = '╩'
 
-        for todo in self.todos:
+        self.bg_reset = Style.RESET_ALL
+        self.bg_primary = Style.RESET_ALL
+        self.bg_alt = Back.BLACK
 
-            row = []
-            for column in self.columns:
+    def border_left_span(self, row_index: Union[int, None]) -> str:
+        color = self.bg_primary
+        if isinstance(row_index, int) and row_index % 2 == 0:
+                color = self.bg_alt
+        return color
 
-                if column == "id":
-                    row += [todo.getID()]
-                elif column == "calendar":
-                    row += [todo.getCalendar()]
-                else:
-                    row += [todo.getIcalTodo().get(column)]
+    def border_right_span(self, row_index: Union[int, None]) -> str:
+        return self.bg_reset
 
-            dataTable += [row]
+    def col_divider_span(self, row_index: Union[int, None]) -> str:
+        return '│'
 
-        print(tabulate(dataTable, [s.capitalize() for s in self.columns]))
+    def header_col_divider_span(self, row_index: Union[int, None]) -> str:
+        return '║'
+
+def print_table(rows : List[object], columns : List[str]) -> None:
+
+    print(tableformatter.generate_table(
+        rows,
+        columns,
+        grid_style=ReportGrid()))

@@ -112,7 +112,7 @@ class Calendars:
 
         return result
 
-    def get_todos(self, calendar = None) -> List[Todo]:
+    def get_todos(self, calendar = None) -> List[icalendar.Todo]:
 
         assert calendar is None or self.calendarExists(calendar)
 

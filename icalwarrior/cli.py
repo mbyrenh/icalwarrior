@@ -7,11 +7,13 @@ from typing import List
 
 import icalendar
 import click
+import tableformatter
 from icalwarrior.args import arg_type, ArgType
 from icalwarrior.configuration import Configuration
 from icalwarrior.calendars import Calendars
 from icalwarrior.todo import Todo
 from icalwarrior.util import expand_prefix
+from icalwarrior.view import print_table
 
 class InvalidArgumentException(Exception):
 
@@ -130,8 +132,14 @@ def show(ctx):
         sys.exit(1)
 
     todos = cal_db.get_todos()
+
+    columns = ['ID', 'Summary', 'Calendar', 'Status']
+    rows = []
+
     for i in range(len(todos)):
-        print(str(i) + " " + todos[i]['summary'] + " " + cal_db.get_calendar(todos[i]))
+        rows.append((i, todos[i]['summary'], cal_db.get_calendar(todos[i]), todos[i]['status']))
+
+    print_table(rows, columns)
 
 @run_cli.command()
 @click.pass_context

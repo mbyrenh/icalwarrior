@@ -12,8 +12,9 @@ setup(
     install_requires=[
         'click',
         'icalendar',
-        'tabulate',
-        'colored'
+        'tableformatter',
+        'colorama',
+        'pyyaml'
     ],
 
     entry_points='''
