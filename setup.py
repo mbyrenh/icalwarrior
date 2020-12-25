@@ -14,7 +14,8 @@ setup(
         'icalendar',
         'tableformatter',
         'colorama',
-        'pyyaml'
+        'pyyaml',
+        'humanize'
     ],
 
     entry_points='''
