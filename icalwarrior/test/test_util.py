@@ -2,8 +2,8 @@ from datetime import datetime, date
 from dateutil.relativedelta import *
 import pytest
 
-from util import decode_date, InvalidDateFormatError, InvalidDateFormulaError, InvalidSynonymError
-from configuration import Configuration
+from icalwarrior.util import decode_date, InvalidDateFormatError, InvalidDateFormulaError, InvalidSynonymError
+from icalwarrior.configuration import Configuration
 
 class DummyConfiguration:
 

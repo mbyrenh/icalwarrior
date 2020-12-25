@@ -8,6 +8,8 @@ import icalendar
 from icalwarrior import __author__,__productname__,__version__
 from icalwarrior.todo import Todo
 from icalwarrior.configuration import Configuration
+from icalwarrior.filter import Constraint
+from icalwarrior.util import expand_prefix
 
 class DuplicateCalendarNameError(Exception):
 
@@ -19,13 +21,21 @@ class DuplicateCalendarNameError(Exception):
     def __str__(self):
         return ("Duplicate name '" + self.calendarName + "' found in " + self.firstCalDir + " and " + self.secondCalDir)
 
+class InvalidConstraintFormatError(Exception):
+
+    def __init__(self, constraint : str) -> None:
+        self.constraint = constraint
+
+    def __str__(self):
+        return "Invalid constraint \"" + self.constraint + "\". Constraint format is NAME[.OPERATOR]:VALUE"
+
 class Calendars:
 
     def __init__(self, config : Configuration) -> None:
         self.config = config
         self.calendars = self.__scan_calendars()
 
-        self.todos = {}
+        self.todos = []
         self.__read_todos()
 
     def __scan_calendars(self) -> Dict[str, str]:
@@ -37,14 +47,13 @@ class Calendars:
             if name in result:
                 raise DuplicateCalendarNameError(name, result[name], calPath)
             else:
-                result[name] = calPath 
+                result[name] = calPath
         return result
 
     def __read_todos(self) -> None:
 
+        todo_id = 1
         for current_calendar in self.calendars:
-
-            self.todos[current_calendar] = []
 
             cal_files = os.listdir(self.calendars[current_calendar])
             for cal_file in cal_files:
@@ -52,15 +61,15 @@ class Calendars:
                 cal = icalendar.Calendar.from_ical(ical_file.read())
 
                 for todo in cal.walk('vtodo'):
-                    self.todos[current_calendar].append(todo)
+
+                    # Add context information to be used for filtering etc.
+                    todo['context'] = {'calendar' : current_calendar, 'id' : todo_id}
+                    todo_id += 1
+                    self.todos.append(todo)
                 ical_file.close()
 
-
     def calendarExists(self, calendar : str) -> bool:
-        if calendar in self.calendars:
-            return True
-        else:
-            return False
+        return calendar in self.calendars
 
     def get_calendars(self) -> List[str]:
         return self.calendars.keys()
@@ -81,6 +90,11 @@ class Calendars:
 
         assert self.calendarExists(calendar)
 
+        # Remove context information if necessary.
+        # Todo has no context if it was just added.
+        if 'context' in todo:
+           del todo['context']
+
         # Since we assume that each todo is stored in a separate calendar,
         # create a calendar as wrapper for the todo item
         todo_cal = icalendar.Calendar()
@@ -94,36 +108,48 @@ class Calendars:
 
     def delete_todo(self, todo : icalendar.Todo) -> None:
 
-        cal_name = self.get_calendar(todo)
+        cal_name = todo['context']['calendar']
         path = os.path.join(self.config.get_calendar_dir(),cal_name,todo['uid'] + ".ics")
         os.remove(path)
 
-    def get_calendar(self, todo : icalendar.Todo) -> str:
-
-        result = ""
-        for cal in self.calendars:
-            todos = self.get_todos(cal)
-
-            for cal_todo in todos:
-
-                if cal_todo['uid'] == todo['uid']:
-                    result = cal
-                    break
-
-        return result
-
-    def get_todos(self, calendar = None) -> List[icalendar.Todo]:
-
-        assert calendar is None or self.calendarExists(calendar)
+    def get_todos(self, constraints = None) -> List[icalendar.Todo]:
 
         result = []
 
-        relevant_calendars = self.calendars.keys()
-        if calendar is not None:
-            relevant_calendars = [calendar]
+        if constraints == None or len(constraints) == 0:
+            result = self.todos
 
-        for current_calendar in relevant_calendars:
-            result += self.todos[current_calendar]
+        else:
 
-        result.sort(key=lambda todo : todo['uid'])
+            for todo in self.todos:
+
+                buf = ""
+                for constraint in constraints:
+
+                    if constraint in ("and", "or"):
+                        buf += " " + constraint + " "
+                    else:
+
+                        col_pos = constraint.find(":")
+                        if col_pos == -1:
+                            raise InvalidConstraintFormatError(constraint)
+
+                        dot_pos = constraint[0:col_pos].find(".")
+                        if dot_pos != -1:
+                            operator = constraint[dot_pos+1:col_pos]
+                            prop_name = expand_prefix(constraint[0:dot_pos], Todo.supported_filter_properties())
+                        else:
+                            operator = "equals"
+                            prop_name = expand_prefix(constraint[0:col_pos], Todo.supported_filter_properties())
+
+                        prop_val = constraint[col_pos+1:]
+
+                        if Constraint.evaluate(self.config, todo, prop_name, operator, prop_val):
+                            buf += "True"
+                        else:
+                            buf += "False"
+
+                if eval(buf):
+                    result.append(todo)
+
         return result

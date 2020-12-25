@@ -8,7 +8,6 @@ from typing import List
 import icalendar
 import click
 import tableformatter
-from icalwarrior.args import arg_type, ArgType
 from icalwarrior.configuration import Configuration
 from icalwarrior.calendars import Calendars
 from icalwarrior.todo import Todo
@@ -109,35 +108,36 @@ def mod(ctx, identifier, properties):
         print("No calendars found. Please check your configuration.")
         sys.exit(1)
 
-    todos = cal_db.get_todos()
+    todos = cal_db.get_todos(["id:"+str(identifier)])
 
-    if identifier > len(todos):
+    if len(todos) == 0:
         print("Invalid identifier " + identifier + ".")
         sys.exit(1)
 
-    todo = todos[identifier]
+    todo = todos[0]
     Todo.set_properties(todo, ctx.obj['config'], properties)
 
-    cal_name = cal_db.get_calendar(todo)
+    cal_name = todo['context']['calendar']
 
     cal_db.write_todo(cal_name, todo)
 
 @run_cli.command()
 @click.pass_context
-def show(ctx):
+@click.argument('constraints',nargs=-1)
+def show(ctx, constraints):
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
         print("No calendars found. Please check your configuration.")
         sys.exit(1)
 
-    todos = cal_db.get_todos()
+    todos = cal_db.get_todos(constraints)
 
     columns = ['ID', 'Summary', 'Calendar', 'Status']
     rows = []
 
     for i in range(len(todos)):
-        rows.append((i, todos[i]['summary'], cal_db.get_calendar(todos[i]), todos[i]['status']))
+        rows.append((todos[i]['context']['id'], todos[i]['summary'], todos[i]['context']['calendar'], todos[i]['status']))
 
     print_table(rows, columns)
 
@@ -151,18 +151,20 @@ def done(ctx, ids):
         print("No calendars found. Please check your configuration.")
         sys.exit(1)
 
-    todos = cal_db.get_todos()
     # first, check if all ids are valid
+    pending_todos = []
     for i in ids:
-        if i > len(todos):
+        todos = cal_db.get_todos(["id:"+i])
+
+        if len(todos) == 0:
             print("Invalid identifier " + i + ".")
             sys.exit(1)
 
-    for i in ids:
-        todo = todos[i]
-        cal_name = cal_db.get_calendar(todo)
+        pending_todos.append(todos[0])
+
+    for todo in pending_todos:
         todo['status'] = 'completed'.upper()
-        cal_db.write_todo(cal_name, todo)
+        cal_db.write_todo(todo['context']['calendar'], todo)
 
 
 @run_cli.command()
@@ -175,13 +177,23 @@ def delete(ctx, ids):
         print("No calendars found. Please check your configuration.")
         sys.exit(1)
 
-    todos = cal_db.get_todos()
-    # first, check if all ids are valid
-    for i in ids:
-        if i > len(todos):
-            print("Invalid identifier " + i + ".")
-            sys.exit(1)
+    constraints = []
+    for idnum in ids:
 
-    for i in ids:
-        todo = todos[i]
+        if len(constraints) != 0:
+            constraints.append("or")
+        constraints.append("id:" + idnum)
+
+    todos = cal_db.get_todos(constraints)
+
+    if len(todos) != len(ids):
+        print("At least one identifier is unknown.")
+        sys.exit(1)
+
+    for todo in todos:
         cal_db.delete_todo(todo)
+
+@run_cli.command()
+@click.pass_context
+def description(ctx):
+    pass

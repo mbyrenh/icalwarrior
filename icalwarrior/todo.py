@@ -16,7 +16,13 @@ class Todo:
 
     TEXT_PROPERTIES = [
         'summary',
-        'description'
+        'description',
+        'categories'
+    ]
+
+    INT_PROPERTIES = [
+        'priority',
+        'percent-complete'
     ]
 
     ENUM_PROPERTIES = [
@@ -27,9 +33,21 @@ class Todo:
         'status' : ["needs-action", "completed", "in-process", "cancelled"]
     }
 
+    TEXT_FILTER_PROPERTIES = [
+        'calendar'
+    ]
+
+    INT_FILTER_PROPERTIES = [
+        'id'
+    ]
+
     @staticmethod
     def supported_properties() -> List[str]:
-        return Todo.DATE_PROPERTIES + Todo.TEXT_PROPERTIES + Todo.ENUM_PROPERTIES
+        return Todo.DATE_PROPERTIES + Todo.TEXT_PROPERTIES + Todo.ENUM_PROPERTIES + Todo.INT_PROPERTIES
+
+    @staticmethod
+    def supported_filter_properties() -> List[str]:
+        return Todo.DATE_PROPERTIES + Todo.TEXT_PROPERTIES + Todo.ENUM_PROPERTIES + Todo.INT_PROPERTIES + Todo.TEXT_FILTER_PROPERTIES + Todo.INT_FILTER_PROPERTIES
 
     @staticmethod
     def parse_property(config : Configuration, prop_name : str, raw_value : str) -> object:
@@ -40,6 +58,10 @@ class Todo:
 
         elif prop_name in Todo.TEXT_PROPERTIES:
             result = raw_value
+
+        elif prop_name in Todo.INT_PROPERTIES:
+            # To check if the value is actually an int, try converting
+            result = str(int(raw_value))
 
         elif prop_name in Todo.ENUM_PROPERTIES:
 
