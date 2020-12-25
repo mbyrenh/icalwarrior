@@ -102,7 +102,7 @@ def add(ctx, calendar, summary, properties):
 @click.pass_context
 @click.argument('identifier', nargs=1, type=int)
 @click.argument('properties',nargs=-1)
-def mod(ctx, identifier, properties):
+def modify(ctx, identifier, properties):
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
