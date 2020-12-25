@@ -27,7 +27,9 @@ def date_after(config : Configuration, date_a : str, date_b : str) -> bool:
 def date_equals(config : Configuration, date_a : str, date_b : str) -> bool:
     ical_date = icalendar.vDatetime.from_ical(date_a)
     comp_date = decode_date(date_b, config)
-    return ical_date == comp_date
+    # format dates to ignore datetime, as we
+    # do not consider time of day for equality test
+    return ical_date.strftime("%Y-%m-%d") == comp_date.strftime("%Y-%m-%d")
 
 def text_contains(config : Configuration, text_a : str, text_b : str) -> bool:
     return text_a.find(text_b) != -1
@@ -82,7 +84,7 @@ class Constraint:
         operators = None
         prop_value = None
 
-        if prop in Todo.TEXT_PROPERTIES:
+        if prop in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
             operators = Constraint.TEXT_OPERATORS
             prop_value = todo[prop]
 
@@ -94,7 +96,7 @@ class Constraint:
             operators = Constraint.ENUM_OPERATORS
             prop_value = todo[prop]
 
-        elif prop in Todo.DATE_PROPERTIES:
+        elif prop in Todo.DATE_PROPERTIES + Todo.DATE_IMMUTABLE_PROPERTIES:
             operators = Constraint.DATE_OPERATORS
             prop_value = todo[prop]
 

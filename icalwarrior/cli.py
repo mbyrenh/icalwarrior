@@ -2,6 +2,7 @@ import sys
 from datetime import datetime
 import uuid
 import os.path
+import dateutil.tz as tz
 
 from typing import List
 
@@ -12,7 +13,7 @@ from icalwarrior.configuration import Configuration
 from icalwarrior.calendars import Calendars
 from icalwarrior.todo import Todo
 from icalwarrior.util import expand_prefix
-from icalwarrior.view import print_table
+from icalwarrior.view import print_table, print_todo
 
 class InvalidArgumentException(Exception):
 
@@ -89,7 +90,7 @@ def add(ctx, calendar, summary, properties):
     todo.add('uid', uid)
     todo.add('summary', summary)
     todo.add('status', 'needs-action'.upper())
-    now = datetime.now()
+    now = datetime.now(tz.gettz())
     todo.add('dtstamp', now, encode=True)
     todo.add('created', now, encode=True)
 
@@ -192,6 +193,25 @@ def delete(ctx, ids):
 
     for todo in todos:
         cal_db.delete_todo(todo)
+
+@run_cli.command()
+@click.pass_context
+@click.argument('identifier',nargs=1,required=True, type=int)
+def info(ctx, identifier):
+
+    cal_db = Calendars(ctx.obj['config'])
+    if len(cal_db.get_calendars()) == 0:
+        print("No calendars found. Please check your configuration.")
+        sys.exit(1)
+
+    todos = cal_db.get_todos(['id:' + str(identifier)])
+
+    if len(todos) < 1:
+        print("Unknown identifier.")
+        sys.exit(1)
+
+    print_todo(ctx.obj['config'], todos[0])
+
 
 @run_cli.command()
 @click.pass_context

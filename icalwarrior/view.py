@@ -1,6 +1,13 @@
 from typing import List, Set, Union
 import tableformatter
 from colorama import init, Fore, Back, Style
+import icalendar
+import datetime
+import humanize
+import dateutil.tz as tz
+
+from icalwarrior.todo import Todo
+from icalwarrior.configuration import Configuration
 
 class ReportGrid(tableformatter.Grid):
 
@@ -60,6 +67,67 @@ class ReportGrid(tableformatter.Grid):
 
     def header_col_divider_span(self, row_index: Union[int, None]) -> str:
         return '║'
+
+def format_property_name(prop_name : str) -> str:
+
+    property_aliases = {
+
+        'dtstart' : 'starts',
+        'dtend' : 'ends'
+
+    }
+
+    result = property_aliases.get(prop_name, prop_name).capitalize()
+
+    return result
+
+
+def format_property_value(config : Configuration, prop_name : str, todo : icalendar.Todo) -> str:
+
+    result = ""
+    if prop_name in Todo.DATE_PROPERTIES + Todo.DATE_IMMUTABLE_PROPERTIES:
+        prop_value = todo[prop_name]
+        # Use vDDDTypes here as this is the default format for dates read by icalendar
+        prop_date = icalendar.vDDDTypes.from_ical(prop_value)
+        result = prop_date.strftime(config.get_datetime_format())
+
+        now = datetime.datetime.now(tz.gettz())
+        result += " (" + humanize.naturaldelta(now - prop_date) + ")"
+
+    elif prop_name in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
+        prop_value = todo[prop_name]
+        result = prop_value
+
+    elif prop_name in Todo.INT_PROPERTIES:
+        prop_value = icalendar.vInt.from_ical(todo[prop_name])
+        result = prop_value
+
+    elif prop_name in Todo.ENUM_PROPERTIES:
+        prop_value = todo[prop_name]
+        result = prop_value
+
+    elif prop_name in Todo.TEXT_FILTER_PROPERTIES:
+        prop_value = todo['context'][prop_name]
+        result = prop_value
+
+    elif prop_name in Todo.INT_FILTER_PROPERTIES:
+        prop_value = todo['context'][prop_name]
+        result = prop_value
+
+    return result
+
+def print_todo(config : Configuration, todo : icalendar.Todo) -> None:
+
+    property_order = ['summary', 'created', 'uid', 'status', 'calendar']
+
+    cols = ["Property", "Value"]
+
+    rows = []
+    for prop in property_order:
+        rows.append([format_property_name(prop), format_property_value(config, prop, todo)])
+
+    print_table(rows, cols)
+
 
 def print_table(rows : List[object], columns : List[str]) -> None:
 

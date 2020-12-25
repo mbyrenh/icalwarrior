@@ -29,13 +29,13 @@ class Todo:
     DATE_PROPERTIES = [
         'due',
         'dtstart',
-        'dtend'
+        'dtend',
     ]
 
     TEXT_PROPERTIES = [
         'summary',
         'description',
-        'categories'
+        'categories',
     ]
 
     INT_PROPERTIES = [
@@ -50,6 +50,14 @@ class Todo:
     ENUM_VALUES = {
         'status' : ["needs-action", "completed", "in-process", "cancelled"]
     }
+
+    DATE_IMMUTABLE_PROPERTIES = [
+        'created'
+    ]
+
+    TEXT_IMMUTABLE_PROPERTIES = [
+        'uid'
+    ]
 
     TEXT_FILTER_PROPERTIES = [
         'calendar'
