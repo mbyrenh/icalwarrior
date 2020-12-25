@@ -1,6 +1,7 @@
 from typing import List
 from datetime import datetime
 import icalendar
+import dateutil.tz as tz
 
 from icalwarrior.args import arg_type, ArgType
 from icalwarrior.util import decode_date
@@ -143,7 +144,7 @@ class Todo:
         if modified:
             if 'last-modified' in todo:
                 del todo['last-modified']
-            todo.add('last-modified', datetime.now())
+            todo.add('last-modified', datetime.now(tz.gettz()))
 
             del todo['dtstamp']
-            todo.add('dtstamp', datetime.now())
+            todo.add('dtstamp', datetime.now(tz.gettz()))

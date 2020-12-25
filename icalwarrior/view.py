@@ -85,34 +85,39 @@ def format_property_name(prop_name : str) -> str:
 def format_property_value(config : Configuration, prop_name : str, todo : icalendar.Todo) -> str:
 
     result = ""
-    if prop_name in Todo.DATE_PROPERTIES + Todo.DATE_IMMUTABLE_PROPERTIES:
-        prop_value = todo[prop_name]
-        # Use vDDDTypes here as this is the default format for dates read by icalendar
-        prop_date = icalendar.vDDDTypes.from_ical(prop_value)
-        result = prop_date.strftime(config.get_datetime_format())
 
-        now = datetime.datetime.now(tz.gettz())
-        result += " (" + humanize.naturaldelta(now - prop_date) + ")"
+    if prop_name in todo or prop_name in todo['context']:
+        if prop_name in Todo.DATE_PROPERTIES + Todo.DATE_IMMUTABLE_PROPERTIES:
+            prop_value = todo[prop_name]
+            # Use vDDDTypes here as this is the default format for dates read by icalendar
+            prop_date = icalendar.vDDDTypes.from_ical(prop_value)
+            result = prop_date.strftime(config.get_datetime_format())
 
-    elif prop_name in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
-        prop_value = todo[prop_name]
-        result = prop_value
+            now = datetime.datetime.now(tz.gettz())
+            result += " (" + humanize.naturaldelta(now - prop_date) + ")"
 
-    elif prop_name in Todo.INT_PROPERTIES:
-        prop_value = icalendar.vInt.from_ical(todo[prop_name])
-        result = prop_value
+        elif prop_name in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
+            prop_value = todo[prop_name]
+            if isinstance(prop_value, icalendar.prop.vCategory):
+                result = ", ".join(prop_value.cats)
+            else:
+                result = prop_value
 
-    elif prop_name in Todo.ENUM_PROPERTIES:
-        prop_value = todo[prop_name]
-        result = prop_value
+        elif prop_name in Todo.INT_PROPERTIES:
+            prop_value = icalendar.vInt.from_ical(todo[prop_name])
+            result = prop_value
 
-    elif prop_name in Todo.TEXT_FILTER_PROPERTIES:
-        prop_value = todo['context'][prop_name]
-        result = prop_value
+        elif prop_name in Todo.ENUM_PROPERTIES:
+            prop_value = todo[prop_name]
+            result = prop_value
 
-    elif prop_name in Todo.INT_FILTER_PROPERTIES:
-        prop_value = todo['context'][prop_name]
-        result = prop_value
+        elif prop_name in Todo.TEXT_FILTER_PROPERTIES:
+            prop_value = todo['context'][prop_name]
+            result = prop_value
+
+        elif prop_name in Todo.INT_FILTER_PROPERTIES:
+            prop_value = todo['context'][prop_name]
+            result = prop_value
 
     return result
 

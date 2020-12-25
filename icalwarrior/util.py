@@ -3,6 +3,7 @@ from typing import List
 from icalwarrior.configuration import Configuration
 from datetime import datetime, date
 from dateutil.relativedelta import *
+import dateutil.tz as tz
 import calendar
 
 def expand_prefix(prefix : str, candidates : List[str]) -> str:
@@ -66,14 +67,17 @@ def add_units(start_date : datetime, unit : str, quantity : int) -> datetime:
 
     return result
 
+def today_as_datetime() -> datetime:
+    return datetime.combine(date.today(), datetime.min.time(), tz.gettz())
+
 def decode_date_formula(formula : str) -> datetime:
-    synonyms = {"today" : date.today(),
-                "tomorrow" : (date.today() + relativedelta(days=+1)),
-                "monday" : (date.today() + relativedelta(weekday=calendar.MONDAY)),
-                "tuesday" : (date.today() + relativedelta(weekday=calendar.TUESDAY)),
-                "wednesday" : (date.today() + relativedelta(weekday=calendar.WEDNESDAY)),
-                "thursday" : (date.today() + relativedelta(weekday=calendar.THURSDAY)),
-                "friday" : (date.today() + relativedelta(weekday=calendar.FRIDAY))}
+    synonyms = {"today" : today_as_datetime(),
+                "tomorrow" : (today_as_datetime() + relativedelta(days=+1)),
+                "monday" : (today_as_datetime() + relativedelta(weekday=calendar.MONDAY)),
+                "tuesday" : (today_as_datetime() + relativedelta(weekday=calendar.TUESDAY)),
+                "wednesday" : (today_as_datetime() + relativedelta(weekday=calendar.WEDNESDAY)),
+                "thursday" : (today_as_datetime() + relativedelta(weekday=calendar.THURSDAY)),
+                "friday" : (today_as_datetime() + relativedelta(weekday=calendar.FRIDAY))}
 
     units = ["days",
              "weeks",
@@ -142,7 +146,7 @@ def decode_date(date : str, config : Configuration) -> datetime:
 
     if date[0].isdigit():
 
-        now = datetime.now()
+        now = datetime.now(tz.gettz())
         read_date = None
         # If the date length is at least as long as the datetime format,
         # check if it is correctly formatted
