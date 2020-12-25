@@ -123,6 +123,10 @@ class Todo:
                 arg_raw_value = arg[col_pos+1:]
 
                 arg_value = Todo.parse_property(config, arg_name, arg_raw_value)
+
+                if arg_name.upper() in icalendar.Todo.singletons and arg_name in todo:
+                    del todo[arg_name]
+
                 todo.add(arg_name, arg_value, encode=True)
                 modified = True
 
