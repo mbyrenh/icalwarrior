@@ -6,6 +6,24 @@ from icalwarrior.args import arg_type, ArgType
 from icalwarrior.util import decode_date
 from icalwarrior.configuration import Configuration
 
+class InvalidEnumValueError(Exception):
+
+    def __init__(self, prop : str, given : str, supported : List[str]) -> None:
+        self.prop = prop
+        self.given = given
+        self.supported = supported
+
+    def __str__(self) -> str:
+        return "Invalid value \"" + self.given + "\" for property \"" + self.prop + "\". Supported values are " + ", ".join(self.supported)
+
+class UnknownPropertyError(Exception):
+    def __init__(self, prop : str, supported : List[str]) -> None:
+        self.prop = prop
+        self.supported = supported
+
+    def __str__(self) -> str:
+        return "Unknown property \"" + self.prop + "\". Supported properties are " + ", ".join(self.supported)
+
 class Todo:
 
     DATE_PROPERTIES = [
@@ -67,6 +85,11 @@ class Todo:
 
             if raw_value.lower() in Todo.ENUM_VALUES[prop_name]:
                     result = raw_value
+            else:
+                raise InvalidEnumValueError(prop_name, raw_value, Todo.ENUM_VALUES[prop_name])
+        else:
+            raise UnknownPropertyError(prop_name, Todo.supported_properties())
+
 
         return result
 

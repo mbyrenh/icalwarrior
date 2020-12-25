@@ -71,6 +71,10 @@ class Constraint:
         'equals' : int_equals
     }
 
+    ENUM_OPERATORS = {
+        'equals' : text_equals
+    }
+
     @staticmethod
     def evaluate(config : Configuration, todo : icalendar.Todo, prop : str, operator : str, value : str) -> bool:
 
@@ -85,6 +89,10 @@ class Constraint:
         elif prop in Todo.TEXT_FILTER_PROPERTIES:
             operators = Constraint.TEXT_OPERATORS
             prop_value = todo['context'][prop]
+
+        elif prop in Todo.ENUM_PROPERTIES:
+            operators = Constraint.ENUM_OPERATORS
+            prop_value = todo[prop]
 
         elif prop in Todo.DATE_PROPERTIES:
             operators = Constraint.DATE_OPERATORS
