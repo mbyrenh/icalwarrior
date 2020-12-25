@@ -1,6 +1,6 @@
 from typing import List, Dict
-from os import listdir, mkdir
-from os.path import isdir, isfile
+import os
+import os.path
 import _pickle as pickle
 
 import icalendar
@@ -31,7 +31,7 @@ class Calendars:
     def __scan_calendars(self) -> Dict[str, str]:
         result = {}
         calDir = self.config.get_calendar_dir()
-        calNames = listdir(calDir)
+        calNames = os.listdir(calDir)
         for name in calNames:
             calPath = calDir + "/" + name
             if name in result:
@@ -46,7 +46,7 @@ class Calendars:
 
             self.todos[current_calendar] = []
 
-            cal_files = listdir(self.calendars[current_calendar])
+            cal_files = os.listdir(self.calendars[current_calendar])
             for cal_file in cal_files:
                 ical_file = open(self.calendars[current_calendar] + '/' + cal_file, 'r')
                 cal = icalendar.Calendar.from_ical(ical_file.read())
@@ -87,9 +87,16 @@ class Calendars:
         todo_cal.add('prodid', '-//' + __author__ + '//' + __productname__ + ' ' + __version__ + '//EN')
         todo_cal.add_component(todo)
 
-        file_handle = open(self.config.get_calendar_dir() + "/" + calendar + "/" + todo['uid'] + ".ics", "wb")
+        path = os.path.join(self.config.get_calendar_dir(),calendar,todo['uid'] + ".ics")
+        file_handle = open(path, "wb")
         file_handle.write(todo_cal.to_ical())
         file_handle.close()
+
+    def delete_todo(self, todo : icalendar.Todo) -> None:
+
+        cal_name = self.get_calendar(todo)
+        path = os.path.join(self.config.get_calendar_dir(),cal_name,todo['uid'] + ".ics")
+        os.remove(path)
 
     def get_calendar(self, todo : icalendar.Todo) -> str:
 

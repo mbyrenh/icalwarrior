@@ -1,6 +1,7 @@
 import sys
 from datetime import datetime
 import uuid
+import os.path
 
 from typing import List
 
@@ -10,6 +11,7 @@ from icalwarrior.args import arg_type, ArgType
 from icalwarrior.configuration import Configuration
 from icalwarrior.calendars import Calendars
 from icalwarrior.todo import Todo
+from icalwarrior.util import expand_prefix
 
 class InvalidArgumentException(Exception):
 
@@ -20,7 +22,21 @@ class InvalidArgumentException(Exception):
     def __str__(self):
         return ("Unknown property '" + self.arg_name + "'. Supported properties are " + ",".join(self.supported))
 
-@click.group(invoke_without_command=True)
+DEFAULT_COMMAND = 'show'
+
+class CommandAliases(click.Group):
+
+    def get_command(self,ctx,cmd_name):
+        rv = click.Group.get_command(self, ctx, cmd_name)
+        if rv is not None:
+            return rv
+
+        cmd = expand_prefix(cmd_name, self.list_commands(ctx))
+        if cmd != "":
+            return click.Group.get_command(self, ctx, cmd)
+        ctx.fail('Invalid command "%s"' % cmd_name)
+
+@click.command(cls=CommandAliases)
 @click.option('-c', '--config', default=Configuration.get_default_config_path(), help='Path to the configuration file')
 @click.pass_context
 def run_cli(ctx, config):
@@ -42,7 +58,8 @@ def run_cli(ctx, config):
 def calendars(ctx):
     cal = Calendars(ctx.obj['config'])
 
-    for name, path in cal.get_calendars():
+    for name in cal.get_calendars():
+        path = os.path.join(ctx.obj['config'].get_calendar_dir(),name)
         print(name + " - " + path)
 
 
@@ -116,3 +133,47 @@ def show(ctx):
     for i in range(len(todos)):
         print(str(i) + " " + todos[i]['summary'] + " " + cal_db.get_calendar(todos[i]))
 
+@run_cli.command()
+@click.pass_context
+@click.argument('ids',nargs=-1,required=True)
+def done(ctx, ids):
+
+    cal_db = Calendars(ctx.obj['config'])
+    if len(cal_db.get_calendars()) == 0:
+        print("No calendars found. Please check your configuration.")
+        sys.exit(1)
+
+    todos = cal_db.get_todos()
+    # first, check if all ids are valid
+    for i in ids:
+        if i > len(todos):
+            print("Invalid identifier " + i + ".")
+            sys.exit(1)
+
+    for i in ids:
+        todo = todos[i]
+        cal_name = cal_db.get_calendar(todo)
+        todo['status'] = 'completed'.upper()
+        cal_db.write_todo(cal_name, todo)
+
+
+@run_cli.command()
+@click.pass_context
+@click.argument('ids',nargs=-1,required=True)
+def delete(ctx, ids):
+
+    cal_db = Calendars(ctx.obj['config'])
+    if len(cal_db.get_calendars()) == 0:
+        print("No calendars found. Please check your configuration.")
+        sys.exit(1)
+
+    todos = cal_db.get_todos()
+    # first, check if all ids are valid
+    for i in ids:
+        if i > len(todos):
+            print("Invalid identifier " + i + ".")
+            sys.exit(1)
+
+    for i in ids:
+        todo = todos[i]
+        cal_db.delete_todo(todo)
