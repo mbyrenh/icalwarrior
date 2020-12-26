@@ -14,19 +14,19 @@ class UnknownOperatorError(Exception):
     def __str__(self):
         return "Unknown operator: " + self.op + " for property " + self.prop + ". Supported operators: " + ", ".join(self.supported)
 
-def date_before(config : Configuration, date_a : str, date_b : object) -> bool:
-    comp_date = adapt_datetype(decode_date(date_b, config), date_b)
-    return date_b < comp_date
+def date_before(config : Configuration, date_a : object, date_b : str) -> bool:
+    comp_date = adapt_datetype(decode_date(date_b, config), date_a)
+    return date_a < comp_date
 
-def date_after(config : Configuration, date_a : str, date_b : object) -> bool:
-    comp_date = adapt_datetype(decode_date(date_b, config), date_b)
-    return date_b > comp_date
+def date_after(config : Configuration, date_a : object, date_b : str) -> bool:
+    comp_date = adapt_datetype(decode_date(date_b, config), date_a)
+    return date_a > comp_date
 
-def date_equals(config : Configuration, date_a : str, date_b : object) -> bool:
-    comp_date = adapt_datetype(decode_date(date_b, config), date_b)
+def date_equals(config : Configuration, date_a : object, date_b : str) -> bool:
+    comp_date = adapt_datetype(decode_date(date_b, config), date_a)
     # format dates to ignore datetime, as we
     # do not consider time of day for equality test
-    return date_b.strftime("%Y-%m-%d") == comp_date.strftime("%Y-%m-%d")
+    return date_a.strftime("%Y-%m-%d") == comp_date.strftime("%Y-%m-%d")
 
 def text_contains(config : Configuration, text_a : str, text_b : str) -> bool:
     return text_a.lower().find(text_b.lower()) != -1
