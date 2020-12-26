@@ -14,6 +14,7 @@ setup(
         'icalendar',
         'tableformatter',
         'colorama',
+        'termcolor',
         'pyyaml',
         'humanize'
     ],

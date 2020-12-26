@@ -22,15 +22,6 @@ def expand_prefix(prefix : str, candidates : List[str]) -> str:
 
     return result
 
-class InvalidSynonymError(Exception):
-
-    def __init__(self, actual : str, supported : List[str]) -> None:
-        self.actual = actual
-        self.supported = supported
-
-    def __str__(self):
-        return "Invalid date symonym or ambiguous prefix \"" + self.actual + "\". Supported synonyms are " + ",".join(self.supported) + "."
-
 class InvalidDateFormulaError(Exception):
 
     def __init__(self, error : str) -> None:
@@ -41,11 +32,13 @@ class InvalidDateFormulaError(Exception):
 
 class InvalidDateFormatError(Exception):
 
-    def __init__(self, dateformat : str) -> None:
-        self.dateformat = dateformat
+    def __init__(self, date_format : str, datetime_format : str, synonyms : List[str]) -> None:
+        self.date_format = date_format
+        self.datetime_format = datetime_format
+        self.synonyms = synonyms
 
     def __str__(self):
-        return "Invalid date format. Expected format is " + self.dateformat + "."
+        return "Invalid date format. Expected format is " + self.date_format + " or " + self.datetime_format + " or a synonym from " + ", ".join(self.synonyms) + "."
 
 def remove_units(start_date : datetime, unit : str, quantity : int) -> datetime:
 
@@ -144,11 +137,11 @@ def decode_date(date : str, config : Configuration) -> datetime:
         "thursday" : (today_as_datetime() + relativedelta(weekday=calendar.THURSDAY)),
         "friday" : (today_as_datetime() + relativedelta(weekday=calendar.FRIDAY)),
         "saturday" : (today_as_datetime() + relativedelta(weekday=calendar.SATURDAY)),
-        "sun" : (today_as_datetime() + relativedelta(weekday=calendar.SUNDAY))
+        "sunday" : (today_as_datetime() + relativedelta(weekday=calendar.SUNDAY))
         }
 
     if len(date) == 0:
-        raise InvalidDateFormatError(config.get_date_format() + " or " + config.get_datetime_format())
+        raise InvalidDateFormatError(config.get_date_format(), config.get_datetime_format(), synonyms.keys())
 
     result = None
 
@@ -189,7 +182,7 @@ def decode_date(date : str, config : Configuration) -> datetime:
 
         synonym = expand_prefix(buf, synonyms)
         if synonym == "":
-            raise InvalidDateFormatError(config.get_date_format() + " or " + config.get_datetime_format())
+            raise InvalidDateFormatError(config.get_date_format(), config.get_datetime_format(), synonyms.keys())
 
         result = synonyms[synonym]
         base_end = i-1

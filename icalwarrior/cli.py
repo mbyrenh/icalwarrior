@@ -91,9 +91,12 @@ def add(ctx, calendar, summary, properties):
     if not cal_db.calendarExists(calendar):
         fail(ctx,"Unknown calendar \"" + calendar + ". Known calendars are " + ", ".join(cal_db.get_calendars()) + ".")
 
-    todo = Todo.create(cal_db.get_unused_uid())
-    Todo.set_properties(todo, ctx.obj['config'], ['summary:' + summary, 'status:needs-action'] + [p for p in properties])
-    cal_db.write_todo(calendar, todo)
+    try:
+        todo = Todo.create(cal_db.get_unused_uid())
+        Todo.set_properties(todo, ctx.obj['config'], ['summary:' + summary, 'status:needs-action'] + [p for p in properties])
+        cal_db.write_todo(calendar, todo)
+    except Exception as err:
+        fail(ctx,str(err))
     success("Successfully created new todo \"" + summary + "\".")
 
 @run_cli.command()
@@ -112,12 +115,15 @@ def modify(ctx, identifier, properties):
         fail(ctx,"Invalid identifier " + identifier + ".")
 
     todo = todos[0]
-    Todo.set_properties(todo, ctx.obj['config'], properties)
+    try:
+        Todo.set_properties(todo, ctx.obj['config'], properties)
 
-    cal_name = todo['context']['calendar']
-    todo_id = str(todo['context']['id'])
+        cal_name = todo['context']['calendar']
+        todo_id = str(todo['context']['id'])
 
-    cal_db.write_todo(cal_name, todo)
+        cal_db.write_todo(cal_name, todo)
+    except Exception as err:
+        fail(ctx,str(err))
     success("Successfully modified todo " + todo_id + ".")
 
 @run_cli.command()
@@ -149,7 +155,10 @@ def show(ctx, report, constraints):
         else:
             constraints = reports[report]['constraint'].split(" ")
 
-    todos = cal_db.get_todos(constraints)
+    try:
+       todos = cal_db.get_todos(constraints)
+    except Exception as err:
+        fail(ctx,str(err))
     # Check if a maximum number of entries has been configured
     row_limit = len(todos)
     try:
@@ -189,11 +198,14 @@ def done(ctx, ids):
 
         pending_todos.append(todos[0])
 
-    for todo in pending_todos:
-        todo['status'] = 'completed'.upper()
-        todo_id = todo['context']['id']
-        cal_db.write_todo(todo['context']['calendar'], todo)
-        success("Set status of todo " + str(todo_id) + " to COMPLETED.")
+    try:
+        for todo in pending_todos:
+            todo['status'] = 'completed'.upper()
+            todo_id = todo['context']['id']
+            cal_db.write_todo(todo['context']['calendar'], todo)
+            success("Set status of todo " + str(todo_id) + " to COMPLETED.")
+    except Exception as err:
+        fail(ctx,str(err))
 
 
 @run_cli.command()
@@ -212,13 +224,19 @@ def delete(ctx, ids):
             constraints.append("or")
         constraints.append("id:" + idnum)
 
-    todos = cal_db.get_todos(constraints)
+    try:
+       todos = cal_db.get_todos(constraints)
+    except Exception as err:
+        fail(ctx,str(err))
 
     if len(todos) != len(ids):
         fail(ctx,"At least one identifier is unknown.")
 
     for todo in todos:
-        cal_db.delete_todo(todo)
+        try:
+            cal_db.delete_todo(todo)
+        except Exception as err:
+            fail(ctx,str(err))
         success("Successfully deleted todo " + str(todo['context']['id']))
 
 @run_cli.command()
@@ -230,7 +248,10 @@ def info(ctx, identifier):
     if len(cal_db.get_calendars()) == 0:
         fail(ctx,"No calendars found. Please check your configuration.")
 
-    todos = cal_db.get_todos(['id:' + str(identifier)])
+    try:
+        todos = cal_db.get_todos(['id:' + str(identifier)])
+    except Exception as err:
+        fail(ctx,str(err))
 
     if len(todos) < 1:
         fail(ctx,"Unknown identifier.")
@@ -247,7 +268,10 @@ def description(ctx, identifier):
     if len(cal_db.get_calendars()) == 0:
         fail(ctx,"No calendars found. Please check your configuration.")
 
-    todos = cal_db.get_todos(['id:' + str(identifier)])
+    try:
+        todos = cal_db.get_todos(['id:' + str(identifier)])
+    except Exception as err:
+        fail(ctx,str(err))
 
     if len(todos) < 1:
         fail(ctx, "Unknown identifier.")
@@ -292,6 +316,9 @@ def description(ctx, identifier):
 @click.pass_context
 @click.argument('expr',nargs=1,required=True)
 def calculate(ctx, expr):
-    result = decode_date(expr, ctx.obj['config'])
+    try:
+        result = decode_date(expr, ctx.obj['config'])
+    except Exception as err:
+        fail(ctx,str(err))
     print(result.strftime(ctx.obj['config'].get_datetime_format()))
 
