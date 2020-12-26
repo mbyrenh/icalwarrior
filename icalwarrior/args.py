@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List
 
+import icalwarrior.constants as constants
 from icalwarrior.util import expand_prefix
 
 class ArgType(Enum):
@@ -15,7 +16,7 @@ def arg_type(arg : str, properties : List[str]) -> ArgType:
     if arg.isdigit():
         result = ArgType.INT
 
-    elif (arg.startswith('+') or arg.startswith('=')) and arg[1:].isalnum():
+    elif (arg.startswith(constants.CATEGORY_INCLUDE_PREFIX) or arg.startswith(constants.CATEGORY_EXCLUDE_PREFIX)) and arg[1:].isalnum():
         result = ArgType.CATEGORY
 
     elif arg.find(':') != -1:

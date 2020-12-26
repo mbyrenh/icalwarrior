@@ -2,6 +2,8 @@ from typing import List
 from pathlib import Path
 import yaml
 
+import icalwarrior.constants as constants
+
 class UnknownConfigurationOptionError(Exception):
 
     def __init__(self, option : str) -> None:
@@ -12,9 +14,6 @@ class UnknownConfigurationOptionError(Exception):
 
 
 class Configuration:
-
-    default_date_format = "%Y-%m-%d"
-    default_datetime_format = "%Y-%m-%dT%H:%M:%S"
 
     config = None
 
@@ -57,13 +56,13 @@ class Configuration:
         return result
 
     def get_datetime_format(self) -> str:
-        result = self.default_datetime_format
-        if 'datetimeformat' in self.config:
-            result = self.config['datetimeformat']
+        result = constants.DEFAULT_DATETIME_FORMAT
+        if 'datetime_format' in self.config:
+            result = self.config['datetime_format']
         return result
 
     def get_date_format(self) -> str:
-        result = self.default_date_format
-        if 'dateformat' in self.config:
-            result = self.config['dateformat']
+        result = constants.DEFAULT_DATE_FORMAT
+        if 'date_format' in self.config:
+            result = self.config['date_format']
         return result

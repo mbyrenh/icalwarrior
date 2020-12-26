@@ -31,13 +31,19 @@ def date_equals(config : Configuration, date_a : object, date_b : str) -> bool:
 def text_contains(config : Configuration, text_a : str, text_b : str) -> bool:
     return text_a.lower().find(text_b.lower()) != -1
 
+def text_not_contains(config : Configuration, text_a : str, text_b : str) -> bool:
+    return text_a.lower().find(text_b.lower()) == -1
+
 def text_equals(config : Configuration, text_a : str, text_b : str) -> bool:
     return text_a.lower() == text_b.lower()
 
-def int_gt(config : Configuration, int_a : str, int_b : str) -> bool:
+def text_not_equals(config : Configuration, text_a : str, text_b : str) -> bool:
+    return text_a.lower() != text_b.lower()
+
+def int_gt(config : Configuration, int_a : int, int_b : str) -> bool:
     return int(int_a) > int(int_b)
 
-def int_geq(config : Configuration, int_a : str, int_b : str) -> bool:
+def int_geq(config : Configuration, int_a : int, int_b : str) -> bool:
     return int(int_a) >= int(int_b)
 
 def int_lt(config : Configuration, int_a : str, int_b : str) -> bool:
@@ -49,6 +55,9 @@ def int_leq(config : Configuration, int_a : str, int_b : str) -> bool:
 def int_equals(config : Configuration, int_a : str, int_b : str) -> bool:
     return int(int_a) == int(int_b)
 
+def int_not_equals(config : Configuration, int_a : str, int_b : str) -> bool:
+    return int(int_a) != int(int_b)
+
 class Constraint:
 
     DATE_OPERATORS = {
@@ -59,7 +68,9 @@ class Constraint:
 
     TEXT_OPERATORS = {
         'contains' : text_contains,
-        'equals' : text_equals
+        'not_contains' : text_not_contains,
+        'equals' : text_equals,
+        'not_equals' : text_not_equals
     }
 
     INT_OPERATORS = {
@@ -67,7 +78,8 @@ class Constraint:
         'geq' : int_geq,
         'lt' : int_lt,
         'leq' : int_leq,
-        'equals' : int_equals
+        'equals' : int_equals,
+        'not_equals' : int_not_equals
     }
 
     @staticmethod
@@ -122,6 +134,5 @@ class Constraint:
                 raise UnknownOperatorError(prop, operator, operators.keys())
 
             result = operators[op](config, prop_value, value)
-
 
         return result

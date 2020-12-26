@@ -11,6 +11,7 @@ from icalwarrior.todo import Todo
 from icalwarrior.configuration import Configuration
 from icalwarrior.filter import Constraint
 from icalwarrior.util import expand_prefix
+import icalwarrior.constants as constants
 
 class DuplicateCalendarNameError(Exception):
 
@@ -136,11 +137,16 @@ class Calendars:
                     if constraint in ("and", "or"):
                         buf += " " + constraint + " "
 
-                    elif constraint.startswith("+"):
+                    elif constraint.startswith(constants.CATEGORY_INCLUDE_PREFIX) or constraint.startswith(constants.CATEGORY_EXCLUDE_PREFIX):
 
                         prop_name = "categories"
-                        prop_val = constraint[1:]
-                        operator = "contains"
+
+                        if constraint.startswith(constants.CATEGORY_INCLUDE_PREFIX):
+                            prop_val = constraint[len(constants.CATEGORY_INCLUDE_PREFIX):]
+                            operator = "contains"
+                        else:
+                            prop_val = constraint[len(constants.CATEGORY_EXCLUDE_PREFIX):]
+                            operator = "not_contains"
 
                         if Constraint.evaluate(self.config, todo, prop_name, operator, prop_val):
                             buf += "True"
