@@ -70,6 +70,8 @@ def adapt_datetype(date : datetime.datetime, ref : icalendar.vDDDTypes) -> objec
     # Additional check for instance of datetime is necessary
     # to avoid treating a datetime as date.
     if isinstance(ref, datetime.datetime):
+        if ref.tzinfo is None or ref.tzinfo.utcoffset(ref) is None:
+            result = result.replace(tzinfo=None)
         pass
     elif isinstance(ref, datetime.date):
         result = result.date()
