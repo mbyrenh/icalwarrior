@@ -132,7 +132,7 @@ class Todo:
 
                 if arg[0] == "+":
                     categories.append(arg[1:])
-                elif arg[0] == "-":
+                elif arg[0] == "=":
                     categories.remove(arg[1:])
 
             elif argtype == ArgType.PROPERTY:
