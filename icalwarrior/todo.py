@@ -4,7 +4,7 @@ import icalendar
 import dateutil.tz as tz
 
 from icalwarrior.args import arg_type, ArgType
-from icalwarrior.util import decode_date
+from icalwarrior.util import decode_date, expand_prefix
 from icalwarrior.configuration import Configuration
 
 class InvalidEnumValueError(Exception):
@@ -77,6 +77,17 @@ class Todo:
         return Todo.DATE_PROPERTIES + Todo.TEXT_PROPERTIES + Todo.ENUM_PROPERTIES + Todo.INT_PROPERTIES + Todo.TEXT_FILTER_PROPERTIES + Todo.INT_FILTER_PROPERTIES
 
     @staticmethod
+    def create(uid : str) -> icalendar.Todo:
+        todo = icalendar.Todo()
+
+        todo.add('uid', uid)
+        now = datetime.now(tz.gettz())
+        todo.add('dtstamp', now, encode=True)
+        todo.add('created', now, encode=True)
+
+        return todo
+
+    @staticmethod
     def parse_property(config : Configuration, prop_name : str, raw_value : str) -> object:
 
         result = None
@@ -123,12 +134,14 @@ class Todo:
                 arg_name = arg[0:col_pos]
                 arg_raw_value = arg[col_pos+1:]
 
-                arg_value = Todo.parse_property(config, arg_name, arg_raw_value)
+                arg_name_full = expand_prefix(arg_name, Todo.supported_properties())
 
-                if arg_name.upper() in icalendar.Todo.singletons and arg_name in todo:
-                    del todo[arg_name]
+                arg_value = Todo.parse_property(config, arg_name_full, arg_raw_value)
 
-                todo.add(arg_name, arg_value, encode=True)
+                if arg_name_full.upper() in icalendar.Todo.singletons and arg_name_full in todo:
+                    del todo[arg_name_full]
+
+                todo.add(arg_name_full, arg_value, encode=True)
                 modified = True
 
             elif argtype == ArgType.STRING:

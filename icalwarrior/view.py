@@ -136,6 +136,9 @@ def print_todo(config : Configuration, todo : icalendar.Todo) -> None:
 
 def print_table(rows : List[object], columns : List[str]) -> None:
 
+    # Add single newline at the beginning
+    # to make output more readable
+    print()
     print(tableformatter.generate_table(
         rows,
         columns,

@@ -2,6 +2,7 @@ from typing import List, Dict
 import os
 import os.path
 import _pickle as pickle
+import uuid
 
 import icalendar
 
@@ -73,6 +74,12 @@ class Calendars:
 
     def get_calendars(self) -> List[str]:
         return self.calendars.keys()
+
+    def get_unused_uid(self) -> str:
+        uid = uuid.uuid4()
+        while not self.is_unique_uid(uid):
+            uid = uuid.uuid4()
+        return uid
 
     def is_unique_uid(self, uid : str) -> bool:
 
