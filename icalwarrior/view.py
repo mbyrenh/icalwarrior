@@ -87,32 +87,35 @@ def format_property_value(config : Configuration, prop_name : str, todo : icalen
 
     result = ""
 
-    if prop_name in todo or prop_name in todo['context']:
-        if prop_name in Todo.DATE_PROPERTIES + Todo.DATE_IMMUTABLE_PROPERTIES:
-            prop_value = todo[prop_name]
+    if prop_name in todo:
+
+        type_fact = icalendar.prop.TypesFactory()
+
+        if type_fact.for_property(prop_name) is icalendar.prop.vDDDTypes:
             # Use vDDDTypes here as this is the default format for dates read by icalendar
-            prop_date = icalendar.vDDDTypes.from_ical(prop_value)
-            result = prop_date.strftime(config.get_datetime_format())
+            prop_value = icalendar.prop.vDDDTypes.from_ical(todo[prop_name])
+            result = prop_value.strftime(config.get_datetime_format())
 
-            now = adapt_datetype(datetime.datetime.now(tz.gettz()), prop_date)
-            result += " (" + humanize.naturaldelta(now - prop_date) + ")"
+            now = adapt_datetype(datetime.datetime.now(tz.gettz()), prop_value)
+            result += " (" + humanize.naturaldelta(now - prop_value) + ")"
 
-        elif prop_name in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
-            prop_value = todo[prop_name]
-            if isinstance(prop_value, icalendar.prop.vCategory):
-                result = ", ".join(prop_value.cats)
-            else:
-                result = prop_value
+        elif type_fact.for_property(prop_name) is icalendar.prop.vText:
+            prop_value = icalendar.prop.vText.from_ical(todo[prop_name])
+            result = prop_value
 
-        elif prop_name in Todo.INT_PROPERTIES:
+        elif type_fact.for_property(prop_name) is icalendar.prop.vInt:
             prop_value = icalendar.vInt.from_ical(todo[prop_name])
             result = prop_value
 
-        elif prop_name in Todo.ENUM_PROPERTIES:
-            prop_value = todo[prop_name]
+        elif type_fact.for_property(prop_name) is icalendar.prop.vCategory:
+            # TODO: from_ical vom vCategory throws an assertion error.
+            #       We therefore convert it manually.
+            prop_value = ",".join([str(c) for c in todo[prop_name].cats])
             result = prop_value
 
-        elif prop_name in Todo.TEXT_FILTER_PROPERTIES:
+    if prop_name in todo['context']:
+
+        if prop_name in Todo.TEXT_FILTER_PROPERTIES:
             prop_value = todo['context'][prop_name]
             result = prop_value
 
