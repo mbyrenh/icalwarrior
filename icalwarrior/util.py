@@ -165,15 +165,16 @@ def decode_date(date : str, config : Configuration) -> datetime:
         except ValueError:
             pass
 
-    # If the date length is at least as long as the datetime format,
-    # check if it is correctly formatted
-    min_len = len(now.strftime(config.get_date_format()))
-    if len(date) >= min_len:
-        try:
-            read_date = datetime.datetime.strptime(date[0:min_len], config.get_date_format())
-            base_end = min_len-1
-        except ValueError:
-            pass
+    if read_date is None:
+        # If the date length is at least as long as the datetime format,
+        # check if it is correctly formatted
+        min_len = len(now.strftime(config.get_date_format()))
+        if len(date) >= min_len:
+            try:
+                read_date = datetime.datetime.strptime(date[0:min_len], config.get_date_format())
+                base_end = min_len-1
+            except ValueError:
+                pass
 
     if read_date is not None:
         result = read_date
@@ -193,6 +194,7 @@ def decode_date(date : str, config : Configuration) -> datetime:
         result = synonyms[synonym]
         base_end = i-1
 
-    result = decode_date_formula(result, date[base_end+1:])
+    if len(date) > base_end+1:
+        result = decode_date_formula(result, date[base_end+1:])
 
     return result
