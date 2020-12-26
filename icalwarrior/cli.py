@@ -297,3 +297,11 @@ def description(ctx, identifier):
         cal_db.write_todo(cal_name, todo)
 
     os.remove(tmp_file_path)
+
+@run_cli.command()
+@click.pass_context
+@click.argument('expr',nargs=1,required=True)
+def calculate(ctx, expr):
+    result = decode_date(expr, ctx.obj['config'])
+    print(result.strftime(ctx.obj['config'].get_datetime_format()))
+
