@@ -2,6 +2,15 @@ from typing import List
 from pathlib import Path
 import yaml
 
+class UnknownConfigurationOptionError(Exception):
+
+    def __init__(self, option : str) -> None:
+        self.option = option
+
+    def __str__(self) -> str:
+        return "Unknown configuration option \"" + self.option + "\""
+
+
 class Configuration:
 
     default_date_format = "%Y-%m-%d"
@@ -21,6 +30,17 @@ class Configuration:
     @staticmethod
     def get_default_data_path() -> str:
         return str(Path.home()) + "/.local/share/ical"
+
+    def get_config(self, option_path : List[str]) -> object:
+        option = self.config
+
+        try:
+            for element in option_path:
+                option = option[element]
+        except ValueError as err:
+            raise UnknownConfigurationOptionError(element) from err
+
+        return option
 
     def get_data_path(self) -> str:
         result = Configuration.get_default_data_path()

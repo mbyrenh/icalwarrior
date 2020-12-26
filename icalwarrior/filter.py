@@ -1,7 +1,7 @@
 from typing import List
 import icalendar
 from icalwarrior.todo import Todo
-from icalwarrior.util import expand_prefix, decode_date
+from icalwarrior.util import expand_prefix, decode_date, adapt_datetype
 from icalwarrior.configuration import Configuration
 
 class UnknownOperatorError(Exception):
@@ -14,28 +14,25 @@ class UnknownOperatorError(Exception):
     def __str__(self):
         return "Unknown operator: " + self.op + " for property " + self.prop + ". Supported operators: " + ", ".join(self.supported)
 
-def date_before(config : Configuration, date_a : str, date_b : str) -> bool:
-    ical_date = icalendar.vDDDTypes.from_ical(date_a)
-    comp_date = decode_date(date_b, config)
-    return ical_date < comp_date
+def date_before(config : Configuration, date_a : str, date_b : object) -> bool:
+    comp_date = adapt_datetype(decode_date(date_b, config), date_b)
+    return date_b < comp_date
 
-def date_after(config : Configuration, date_a : str, date_b : str) -> bool:
-    ical_date = icalendar.vDDDTypes.from_ical(date_a)
-    comp_date = decode_date(date_b, config)
-    return ical_date > comp_date
+def date_after(config : Configuration, date_a : str, date_b : object) -> bool:
+    comp_date = adapt_datetype(decode_date(date_b, config), date_b)
+    return date_b > comp_date
 
-def date_equals(config : Configuration, date_a : str, date_b : str) -> bool:
-    ical_date = icalendar.vDDDTypes.from_ical(date_a)
-    comp_date = decode_date(date_b, config)
+def date_equals(config : Configuration, date_a : str, date_b : object) -> bool:
+    comp_date = adapt_datetype(decode_date(date_b, config), date_b)
     # format dates to ignore datetime, as we
     # do not consider time of day for equality test
-    return ical_date.strftime("%Y-%m-%d") == comp_date.strftime("%Y-%m-%d")
+    return date_b.strftime("%Y-%m-%d") == comp_date.strftime("%Y-%m-%d")
 
 def text_contains(config : Configuration, text_a : str, text_b : str) -> bool:
-    return text_a.find(text_b) != -1
+    return text_a.lower().find(text_b.lower()) != -1
 
 def text_equals(config : Configuration, text_a : str, text_b : str) -> bool:
-    return text_a == text_b
+    return text_a.lower() == text_b.lower()
 
 def int_gt(config : Configuration, int_a : str, int_b : str) -> bool:
     return int(int_a) > int(int_b)
@@ -73,10 +70,6 @@ class Constraint:
         'equals' : int_equals
     }
 
-    ENUM_OPERATORS = {
-        'equals' : text_equals
-    }
-
     @staticmethod
     def evaluate(config : Configuration, todo : icalendar.Todo, prop : str, operator : str, value : str) -> bool:
 
@@ -84,27 +77,40 @@ class Constraint:
         operators = None
         prop_value = None
 
-        if prop in todo or prop in todo['context']:
+        if prop in todo:
 
-            if prop in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
+            type_fact = icalendar.prop.TypesFactory()
+
+            if type_fact.for_property(prop) is icalendar.prop.vText:
                 operators = Constraint.TEXT_OPERATORS
-                prop_value = todo[prop]
+                prop_value = icalendar.prop.vText.from_ical(todo[prop])
 
-            elif prop in Todo.TEXT_FILTER_PROPERTIES:
+            elif type_fact.for_property(prop) is icalendar.prop.vCategory:
+                operators = Constraint.TEXT_OPERATORS
+                # TODO: from_ical vom vCategory throws an assertion error.
+                #       We therefore convert it manually.
+                prop_value = ",".join([str(c) for c in todo[prop].cats])
+
+            elif type_fact.for_property(prop) is icalendar.prop.vDDDTypes:
+                operators = Constraint.DATE_OPERATORS
+                prop_value = icalendar.prop.vDDDTypes.from_ical(todo[prop])
+
+            elif type_fact.for_property(prop) is icalendar.prop.vInt:
+                operators = Constraint.INT_OPERATORS
+                prop_value = icalendar.prop.vInt.from_ical(todo[prop])
+
+            op = expand_prefix(operator, operators.keys())
+
+            if op == "":
+                raise UnknownOperatorError(prop, operator, operators.keys())
+
+            result = operators[op](config, prop_value, value)
+
+        elif prop in todo['context']:
+
+            if prop in Todo.TEXT_FILTER_PROPERTIES:
                 operators = Constraint.TEXT_OPERATORS
                 prop_value = todo['context'][prop]
-
-            elif prop in Todo.ENUM_PROPERTIES:
-                operators = Constraint.ENUM_OPERATORS
-                prop_value = todo[prop]
-
-            elif prop in Todo.DATE_PROPERTIES + Todo.DATE_IMMUTABLE_PROPERTIES:
-                operators = Constraint.DATE_OPERATORS
-                prop_value = todo[prop]
-
-            elif prop in Todo.INT_PROPERTIES:
-                operators = Constraint.INT_OPERATORS
-                prop_value = todo[prop]
 
             elif prop in Todo.INT_FILTER_PROPERTIES:
                 operators = Constraint.INT_OPERATORS
@@ -116,5 +122,6 @@ class Constraint:
                 raise UnknownOperatorError(prop, operator, operators.keys())
 
             result = operators[op](config, prop_value, value)
+
 
         return result

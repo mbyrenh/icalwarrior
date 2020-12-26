@@ -8,6 +8,7 @@ import dateutil.tz as tz
 
 from icalwarrior.todo import Todo
 from icalwarrior.configuration import Configuration
+from icalwarrior.util import adapt_datetype
 
 class ReportGrid(tableformatter.Grid):
 
@@ -93,7 +94,7 @@ def format_property_value(config : Configuration, prop_name : str, todo : icalen
             prop_date = icalendar.vDDDTypes.from_ical(prop_value)
             result = prop_date.strftime(config.get_datetime_format())
 
-            now = datetime.datetime.now(tz.gettz())
+            now = adapt_datetype(datetime.datetime.now(tz.gettz()), prop_date)
             result += " (" + humanize.naturaldelta(now - prop_date) + ")"
 
         elif prop_name in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
@@ -123,7 +124,7 @@ def format_property_value(config : Configuration, prop_name : str, todo : icalen
 
 def print_todo(config : Configuration, todo : icalendar.Todo) -> None:
 
-    property_order = ['summary', 'created', 'due', 'uid', 'status', 'categories', 'calendar', 'description']
+    property_order = config.get_config(['info_columns']).split(",")
 
     cols = ["Property", "Value"]
 
@@ -132,7 +133,6 @@ def print_todo(config : Configuration, todo : icalendar.Todo) -> None:
         rows.append([format_property_name(prop), format_property_value(config, prop, todo)])
 
     print_table(rows, cols)
-
 
 def print_table(rows : List[object], columns : List[str]) -> None:
 

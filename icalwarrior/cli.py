@@ -12,11 +12,11 @@ from typing import List
 import icalendar
 import click
 import tableformatter
-from icalwarrior.configuration import Configuration
+from icalwarrior.configuration import Configuration, UnknownConfigurationOptionError
 from icalwarrior.calendars import Calendars
 from icalwarrior.todo import Todo
-from icalwarrior.util import expand_prefix
-from icalwarrior.view import print_table, print_todo
+from icalwarrior.util import expand_prefix, decode_date
+from icalwarrior.view import print_table, print_todo, format_property_name, format_property_value
 
 class InvalidArgumentException(Exception):
 
@@ -127,22 +127,52 @@ def modify(ctx, identifier, properties):
 
 @run_cli.command()
 @click.pass_context
+@click.argument('report',nargs=1,default="default")
 @click.argument('constraints',nargs=-1)
-def show(ctx, constraints):
+def show(ctx, report, constraints):
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
         print("No calendars found. Please check your configuration.")
         sys.exit(1)
 
-    todos = cal_db.get_todos(constraints)
+    # Check if the report exists
+    # and if it exists, extract columns
+    # and constraints
+    reports = ctx.obj['config'].get_config(['reports'])
 
-    columns = ['ID', 'Summary', 'Calendar', 'Status']
+    if report not in reports:
+        ctx.fail("Unknown report \"" + report + "\". Known reports are " + ", ".join(reports.keys()) + ".")
+
+    if not "columns" in reports[report]:
+        ctx.fail("No colums specified for report \"" + report + "\".")
+
+    columns = reports[report]['columns'].split(",")
+
+    if 'constraint' in reports[report]:
+        if len(constraints) > 0:
+            constraints = [c for c in constraints] + ['and'] + reports[report]['constraint'].split(" ")
+        else:
+            constraints = reports[report]['constraint'].split(" ")
+
+    todos = cal_db.get_todos(constraints)
+    # Check if a maximum number of entries has been configured
+    row_limit = len(todos)
+    try:
+        row_limit = min(reports[report]['max_list_length'], row_limit)
+    except KeyError:
+        pass
+
     rows = []
 
-    for i in range(len(todos)):
-        rows.append((todos[i]['context']['id'], todos[i]['summary'], todos[i]['context']['calendar'], todos[i]['status']))
+    for i in range(row_limit):
+        row = []
+        for column in columns:
+            row.append(format_property_value(ctx.obj['config'], column, todos[i]))
 
+        rows.append(row)
+
+    columns = [format_property_name(col) for col in columns]
     print_table(rows, columns)
 
 @run_cli.command()

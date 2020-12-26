@@ -128,6 +128,18 @@ class Calendars:
 
                     if constraint in ("and", "or"):
                         buf += " " + constraint + " "
+
+                    elif constraint.startswith("+"):
+
+                        prop_name = "categories"
+                        prop_val = constraint[1:]
+                        operator = "contains"
+
+                        if Constraint.evaluate(self.config, todo, prop_name, operator, prop_val):
+                            buf += "True"
+                        else:
+                            buf += "False"
+
                     else:
 
                         col_pos = constraint.find(":")

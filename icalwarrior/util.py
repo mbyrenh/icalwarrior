@@ -1,10 +1,12 @@
 from typing import List
 
+
 from icalwarrior.configuration import Configuration
-from datetime import datetime, date
+import datetime
 from dateutil.relativedelta import *
 import dateutil.tz as tz
 import calendar
+import icalendar
 
 def expand_prefix(prefix : str, candidates : List[str]) -> str:
 
@@ -68,35 +70,29 @@ def add_units(start_date : datetime, unit : str, quantity : int) -> datetime:
     return result
 
 def today_as_datetime() -> datetime:
-    return datetime.combine(date.today(), datetime.min.time(), tz.gettz())
+    return datetime.datetime.combine(datetime.date.today(), datetime.datetime.min.time(), tz.gettz())
 
-def decode_date_formula(formula : str) -> datetime:
-    synonyms = {"today" : today_as_datetime(),
-                "tomorrow" : (today_as_datetime() + relativedelta(days=+1)),
-                "monday" : (today_as_datetime() + relativedelta(weekday=calendar.MONDAY)),
-                "tuesday" : (today_as_datetime() + relativedelta(weekday=calendar.TUESDAY)),
-                "wednesday" : (today_as_datetime() + relativedelta(weekday=calendar.WEDNESDAY)),
-                "thursday" : (today_as_datetime() + relativedelta(weekday=calendar.THURSDAY)),
-                "friday" : (today_as_datetime() + relativedelta(weekday=calendar.FRIDAY))}
+def adapt_datetype(date : datetime.datetime, ref : icalendar.vDDDTypes) -> object:
+    result = date
+    # Additional check for instance of datetime is necessary
+    # to avoid treating a datetime as date.
+    if isinstance(ref, datetime.datetime):
+        pass
+    elif isinstance(ref, datetime.date):
+        result = result.date()
+    elif isinstance(ref, datetime.time):
+        result = result.time()
+    return result
 
+def decode_date_formula(base_date : datetime, formula : str) -> datetime:
     units = ["days",
              "weeks",
              "months",
              "years"]
 
-    result = None
+    result = base_date
     buf = ""
     i = 0
-    while i < len(formula) and formula[i].isalpha():
-        buf += formula[i]
-        i += 1
-
-    synonym = expand_prefix(buf, synonyms)
-    if synonym == "":
-        raise InvalidSynonymError(buf, synonyms)
-
-    # Convert synonym to formulatime
-    result = synonyms[synonym]
 
     # If there are more characters, continue reading
     while i < len(formula):
@@ -139,39 +135,64 @@ def decode_date_formula(formula : str) -> datetime:
 
 def decode_date(date : str, config : Configuration) -> datetime:
 
+    synonyms = {
+        "today" : today_as_datetime(),
+        "tomorrow" : (today_as_datetime() + relativedelta(days=+1)),
+        "monday" : (today_as_datetime() + relativedelta(weekday=calendar.MONDAY)),
+        "tuesday" : (today_as_datetime() + relativedelta(weekday=calendar.TUESDAY)),
+        "wednesday" : (today_as_datetime() + relativedelta(weekday=calendar.WEDNESDAY)),
+        "thursday" : (today_as_datetime() + relativedelta(weekday=calendar.THURSDAY)),
+        "friday" : (today_as_datetime() + relativedelta(weekday=calendar.FRIDAY)),
+        "saturday" : (today_as_datetime() + relativedelta(weekday=calendar.SATURDAY)),
+        "sun" : (today_as_datetime() + relativedelta(weekday=calendar.SUNDAY))
+        }
+
     if len(date) == 0:
         raise InvalidDateFormatError(config.get_date_format() + " or " + config.get_datetime_format())
 
     result = None
 
-    if date[0].isdigit():
+    now = datetime.datetime.now(tz.gettz())
+    read_date = None
+    base_end = 0
+    # If the date length is at least as long as the datetime format,
+    # check if it is correctly formatted
+    min_len = len(now.strftime(config.get_datetime_format()))
+    if len(date) >= min_len:
+        try:
+            read_date = datetime.datetime.strptime(date[0:min_len], config.get_datetime_format())
+            base_end = min_len-1
+        except ValueError:
+            pass
 
-        now = datetime.now(tz.gettz())
-        read_date = None
-        # If the date length is at least as long as the datetime format,
-        # check if it is correctly formatted
-        if len(date) == len(now.strftime(config.get_datetime_format())):
-            try:
-                read_date = datetime.strptime(date, config.get_datetime_format())
-            except ValueError:
-                pass
+    # If the date length is at least as long as the datetime format,
+    # check if it is correctly formatted
+    min_len = len(now.strftime(config.get_date_format()))
+    if len(date) >= min_len:
+        try:
+            read_date = datetime.datetime.strptime(date[0:min_len], config.get_date_format())
+            base_end = min_len-1
+        except ValueError:
+            pass
 
-        # If the date length is at least as long as the datetime format,
-        # check if it is correctly formatted
-        if len(date) == len(now.strftime(config.get_date_format())):
-            try:
-                read_date = datetime.strptime(date, config.get_date_format())
-            except ValueError:
-                pass
+    if read_date is not None:
+        result = read_date
 
-        if read_date is None:
-                raise InvalidDateFormatError(config.get_date_format() + " or " + config.get_datetime_format())
-        else:
-            result = read_date
-
-
-    ## otherwise, read it as a formula
+    # Check if we can find a synonym
     else:
-        result = decode_date_formula(date)
+        buf = ""
+        i = 0
+        while i < len(date) and date[i].isalpha():
+            buf += date[i]
+            i += 1
+
+        synonym = expand_prefix(buf, synonyms)
+        if synonym == "":
+            raise InvalidDateFormatError(config.get_date_format() + " or " + config.get_datetime_format())
+
+        result = synonyms[synonym]
+        base_end = i-1
+
+    result = decode_date_formula(result, date[base_end+1:])
 
     return result
