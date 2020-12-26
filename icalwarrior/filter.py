@@ -15,17 +15,17 @@ class UnknownOperatorError(Exception):
         return "Unknown operator: " + self.op + " for property " + self.prop + ". Supported operators: " + ", ".join(self.supported)
 
 def date_before(config : Configuration, date_a : str, date_b : str) -> bool:
-    ical_date = icalendar.vDatetime.from_ical(date_a)
+    ical_date = icalendar.vDDDTypes.from_ical(date_a)
     comp_date = decode_date(date_b, config)
     return ical_date < comp_date
 
 def date_after(config : Configuration, date_a : str, date_b : str) -> bool:
-    ical_date = icalendar.vDatetime.from_ical(date_a)
+    ical_date = icalendar.vDDDTypes.from_ical(date_a)
     comp_date = decode_date(date_b, config)
     return ical_date > comp_date
 
 def date_equals(config : Configuration, date_a : str, date_b : str) -> bool:
-    ical_date = icalendar.vDatetime.from_ical(date_a)
+    ical_date = icalendar.vDDDTypes.from_ical(date_a)
     comp_date = decode_date(date_b, config)
     # format dates to ignore datetime, as we
     # do not consider time of day for equality test
