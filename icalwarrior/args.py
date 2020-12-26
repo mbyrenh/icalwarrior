@@ -15,7 +15,7 @@ def arg_type(arg : str, properties : List[str]) -> ArgType:
     if arg.isdigit():
         result = ArgType.INT
 
-    elif arg.startswith('+') and arg[1:].isalnum():
+    elif (arg.startswith('+') or arg.startswith('-')) and arg[1:].isalnum():
         result = ArgType.CATEGORY
 
     elif arg.find(':') != -1:

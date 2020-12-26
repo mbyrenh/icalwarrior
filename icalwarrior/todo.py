@@ -126,7 +126,14 @@ class Todo:
 
             if argtype == ArgType.CATEGORY:
 
-                categories.append(arg[1:])
+                # Make sure we consider existing categories
+                if len(categories) == 0 and 'categories' in todo:
+                    categories = [str(c) for c in todo['categories'].cats]
+
+                if arg[0] == "+":
+                    categories.append(arg[1:])
+                elif arg[0] == "-":
+                    categories.remove(arg[1:])
 
             elif argtype == ArgType.PROPERTY:
 
@@ -151,6 +158,8 @@ class Todo:
                 modified = True
 
         if len(categories) > 0:
+            if 'categories' in todo:
+                del todo['categories']
             todo.add("categories", categories)
             modified = True
 
