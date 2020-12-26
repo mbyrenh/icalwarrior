@@ -84,35 +84,37 @@ class Constraint:
         operators = None
         prop_value = None
 
-        if prop in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
-            operators = Constraint.TEXT_OPERATORS
-            prop_value = todo[prop]
+        if prop in todo or prop in todo['context']:
 
-        elif prop in Todo.TEXT_FILTER_PROPERTIES:
-            operators = Constraint.TEXT_OPERATORS
-            prop_value = todo['context'][prop]
+            if prop in Todo.TEXT_PROPERTIES + Todo.TEXT_IMMUTABLE_PROPERTIES:
+                operators = Constraint.TEXT_OPERATORS
+                prop_value = todo[prop]
 
-        elif prop in Todo.ENUM_PROPERTIES:
-            operators = Constraint.ENUM_OPERATORS
-            prop_value = todo[prop]
+            elif prop in Todo.TEXT_FILTER_PROPERTIES:
+                operators = Constraint.TEXT_OPERATORS
+                prop_value = todo['context'][prop]
 
-        elif prop in Todo.DATE_PROPERTIES + Todo.DATE_IMMUTABLE_PROPERTIES:
-            operators = Constraint.DATE_OPERATORS
-            prop_value = todo[prop]
+            elif prop in Todo.ENUM_PROPERTIES:
+                operators = Constraint.ENUM_OPERATORS
+                prop_value = todo[prop]
 
-        elif prop in Todo.INT_PROPERTIES:
-            operators = Constraint.INT_OPERATORS
-            prop_value = todo[prop]
+            elif prop in Todo.DATE_PROPERTIES + Todo.DATE_IMMUTABLE_PROPERTIES:
+                operators = Constraint.DATE_OPERATORS
+                prop_value = todo[prop]
 
-        elif prop in Todo.INT_FILTER_PROPERTIES:
-            operators = Constraint.INT_OPERATORS
-            prop_value = todo['context'][prop]
+            elif prop in Todo.INT_PROPERTIES:
+                operators = Constraint.INT_OPERATORS
+                prop_value = todo[prop]
 
-        op = expand_prefix(operator, operators.keys())
+            elif prop in Todo.INT_FILTER_PROPERTIES:
+                operators = Constraint.INT_OPERATORS
+                prop_value = todo['context'][prop]
 
-        if op == "":
-            raise UnknownOperatorError(prop, operator, operators.keys())
+            op = expand_prefix(operator, operators.keys())
 
-        result = operators[op](config, prop_value, value)
+            if op == "":
+                raise UnknownOperatorError(prop, operator, operators.keys())
+
+            result = operators[op](config, prop_value, value)
 
         return result
