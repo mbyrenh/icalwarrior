@@ -1,11 +1,15 @@
 data_path: 
 calendars: 
 
+datetime_format: "%Y-%m-%dT%H:%M:%S"
+date_format: "%Y-%m-%d"
+
 info_columns: summary,created,due,uid,status,categories,calendar,description
 
 reports:
   default:
-    columns: id,calendar,summary,categories,due
+    columns: id,calendar,summary,categories,status,due
+    constraint: status.not_equals:completed 
     max_list_length: 30
   today:
     columns: id,calendar,summary,due,categories
