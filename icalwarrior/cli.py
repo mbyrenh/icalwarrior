@@ -309,6 +309,7 @@ def description(ctx, identifier):
         todo['description'] = new_desc
         cal_name = todo['context']['calendar']
         cal_db.write_todo(cal_name, todo)
+        success("Successfully updated description.")
 
     os.remove(tmp_file_path)
 
