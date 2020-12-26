@@ -2,6 +2,9 @@ import sys
 from datetime import datetime
 import uuid
 import os.path
+import os
+import subprocess
+from tempfile import NamedTemporaryFile, gettempdir
 import dateutil.tz as tz
 
 from typing import List
@@ -215,5 +218,52 @@ def info(ctx, identifier):
 
 @run_cli.command()
 @click.pass_context
-def description(ctx):
-    pass
+@click.argument('identifier',nargs=1,required=True, type=int)
+def description(ctx, identifier):
+
+    cal_db = Calendars(ctx.obj['config'])
+    if len(cal_db.get_calendars()) == 0:
+        print("No calendars found. Please check your configuration.")
+        sys.exit(1)
+
+    todos = cal_db.get_todos(['id:' + str(identifier)])
+
+    if len(todos) < 1:
+        print("Unknown identifier.")
+        sys.exit(1)
+
+    todo = todos[0]
+
+    # Create temporary text file
+    # Set delete to False, so that we can close
+    # the file without it being deleted and then re-open it
+    # with a text editor.
+    tmp_file = NamedTemporaryFile(delete=False)
+    tmp_file_path = os.path.join(gettempdir(), tmp_file.name)
+
+    # If the todo has a description already, write it into the text file
+    if 'description' in todo:
+        tmp_file.write(str(todo['description']).encode('utf-8'))
+
+    tmp_file.close()
+
+    # Open the text file using the system editor
+    default_editor = os.getenv('EDITOR')
+    if default_editor is None:
+        default_editor = "xdg-open"
+
+    subprocess.call([default_editor, tmp_file_path])
+
+    if click.confirm('Shall the new description be used?'):
+        tmp_file = open(tmp_file_path, 'r')
+        new_desc = tmp_file.read()
+        tmp_file.close()
+
+        if 'description' in todo:
+            del todo['description']
+
+        todo['description'] = new_desc
+        cal_name = todo['context']['calendar']
+        cal_db.write_todo(cal_name, todo)
+
+    os.remove(tmp_file_path)

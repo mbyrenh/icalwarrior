@@ -123,7 +123,7 @@ def format_property_value(config : Configuration, prop_name : str, todo : icalen
 
 def print_todo(config : Configuration, todo : icalendar.Todo) -> None:
 
-    property_order = ['summary', 'created', 'due', 'uid', 'status', 'categories', 'calendar']
+    property_order = ['summary', 'created', 'due', 'uid', 'status', 'categories', 'calendar', 'description']
 
     cols = ["Property", "Value"]
 
