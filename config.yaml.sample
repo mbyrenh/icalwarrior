@@ -1,0 +1,19 @@
+data_path: 
+calendars: 
+
+info_columns: summary,created,due,uid,status,categories,calendar,description
+
+reports:
+  default:
+    columns: id,calendar,summary,categories,due
+    max_list_length: 30
+  today:
+    columns: id,calendar,summary,due,categories
+    constraint: due:tod
+    max_list_length: 30
+  week:
+    columns: id,calendar,summary,due,categories
+    constraint: due.after:sun-1w and due.before:sun+1d
+    max_list_length: 30
+
+
