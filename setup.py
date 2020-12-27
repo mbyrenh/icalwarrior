@@ -16,7 +16,8 @@ setup(
         'colorama',
         'termcolor',
         'pyyaml',
-        'humanize'
+        'humanize',
+        'pytest'
     ],
 
     entry_points='''
