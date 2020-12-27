@@ -1,4 +1,3 @@
-data_path: 
 calendars: 
 
 datetime_format: "%Y-%m-%dT%H:%M:%S"
