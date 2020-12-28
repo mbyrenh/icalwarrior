@@ -250,6 +250,37 @@ def delete(ctx, ids):
 
 @run_cli.command()
 @click.pass_context
+@click.argument('identifier',type=int,required=True)
+@click.argument('source',type=str,required=True)
+@click.argument('destination',type=str,required=True)
+def move(ctx, identifier, source, destination):
+
+    cal_db = Calendars(ctx.obj['config'])
+
+    if source not in cal_db.get_calendars():
+        fail(ctx,"Unknown calendar \"" + source +"\".")
+
+    if destination not in cal_db.get_calendars():
+        fail(ctx,"Unknown calendar \"" + destination +"\".")
+
+    constraints = ["id:" + str(identifier)]
+
+    try:
+       todos = cal_db.get_todos(constraints)
+    except Exception as err:
+        fail(ctx,str(err))
+
+    if len(todos) == 0:
+        fail(ctx,"No todo with identifier " + identifier + " has been found.")
+
+    try:
+        cal_db.move_todo(todos[0]['uid'], source, destination)
+    except Exception as err:
+        fail(ctx,str(err))
+    success("Successfully moved todo to calendar " + destination)
+
+@run_cli.command()
+@click.pass_context
 @click.argument('identifier',nargs=1,required=True, type=int)
 def info(ctx, identifier):
 

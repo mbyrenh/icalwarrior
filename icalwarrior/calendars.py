@@ -115,6 +115,13 @@ class Calendars:
         file_handle.write(todo_cal.to_ical())
         file_handle.close()
 
+    def move_todo(self, uid : str, source : str, destination : str) -> None:
+
+        src_path = os.path.join(self.config.get_calendar_dir(),source,uid + ".ics")
+        dst_path = os.path.join(self.config.get_calendar_dir(),destination,uid + ".ics")
+        os.rename(src_path, dst_path)
+
+
     def delete_todo(self, todo : icalendar.Todo) -> None:
 
         cal_name = todo['context']['calendar']
