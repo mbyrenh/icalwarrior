@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile, gettempdir
 
 from typing import List
 
+import json
 import click
 import colorama
 from termcolor import colored
@@ -359,3 +360,42 @@ def cleanup(ctx, calendar):
 
         else:
             hint("No todos deleted from " + calendar + ".")
+
+@run_cli.command()
+@click.pass_context
+@click.argument('report',nargs=1,default="default")
+@click.argument('constraints',nargs=-1)
+def export(ctx, report, constraints):
+
+    cal_db = Calendars(ctx.obj['config'])
+    if len(cal_db.get_calendars()) == 0:
+        fail(ctx,"No calendars found. Please check your configuration.")
+
+    # Check if the report exists
+    # and if it exists, extract columns
+    # and constraints
+    reports = ctx.obj['config'].get_config(['reports'])
+
+    if report not in reports:
+        ctx.fail("Unknown report \"" + report + "\". Known reports are " + ", ".join(reports.keys()) + ".")
+
+    if 'constraint' in reports[report]:
+        if len(constraints) > 0:
+            constraints = [c for c in constraints] + ['and'] + reports[report]['constraint'].split(" ")
+        else:
+            constraints = reports[report]['constraint'].split(" ")
+
+    try:
+       todos = cal_db.get_todos(constraints)
+    except Exception as err:
+        fail(ctx,str(err))
+
+    objects = []
+
+    for todo in todos:
+        obj = {}
+        for prop_name in todo:
+            obj[prop_name] = format_property_value(ctx.obj['config'], prop_name, todo)
+            objects.append(obj)
+
+    click.echo(json.dumps(objects))
