@@ -106,6 +106,7 @@ class Calendars:
         # Since we assume that each todo is stored in a separate calendar,
         # create a calendar as wrapper for the todo item
         todo_cal = icalendar.Calendar()
+        todo_cal.add('version', "2.0")
         todo_cal.add('prodid', '-//' + __author__ + '//' + __productname__ + ' ' + __version__ + '//EN')
         todo_cal.add_component(todo)
 
