@@ -68,12 +68,15 @@ def run_cli(ctx, config):
 def calendars(ctx):
     cal = Calendars(ctx.obj['config'])
 
-    cols = ["Name", "Path"]
+    cols = ["Name", "Path", "Total number of todos", "Number of completed todos"]
     rows = []
 
+    cal_db = Calendars(ctx.obj['config'])
     for name in cal.get_calendars():
         path = os.path.join(ctx.obj['config'].get_calendar_dir(),name)
-        rows.append([name, path])
+        todos = cal_db.get_todos(["cal:" + name])
+        completed_todos = cal_db.get_todos(["cal:"+ name, "and", "status:completed"])
+        rows.append([name, path, len(todos), len(completed_todos)])
 
     print_table(rows,cols)
 
