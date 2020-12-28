@@ -6,6 +6,7 @@ import dateutil.tz as tz
 from icalwarrior.args import arg_type, ArgType
 from icalwarrior.util import decode_date, expand_prefix
 from icalwarrior.configuration import Configuration
+import icalwarrior.constants as constants
 
 class InvalidEnumValueError(Exception):
 
@@ -118,21 +119,21 @@ class Todo:
         # Collect categories in list and add it once to the todo
         # as otherwise, icalendar will add a separate CATEGORIES-line
         # for each category.
-        categories = []
         modified = False
+
+        categories = []
+        # Make sure we consider existing categories
+        if 'categories' in todo:
+            categories = [str(c) for c in todo['categories'].cats]
 
         for arg in raw_properties:
             argtype = arg_type(arg, Todo.supported_properties())
 
             if argtype == ArgType.CATEGORY:
 
-                # Make sure we consider existing categories
-                if len(categories) == 0 and 'categories' in todo:
-                    categories = [str(c) for c in todo['categories'].cats]
-
-                if arg[0] == "+":
+                if arg[0] == constants.CATEGORY_INCLUDE_PREFIX:
                     categories.append(arg[1:])
-                elif arg[0] == "=":
+                elif arg[0] == constants.CATEGORY_EXCLUDE_PREFIX:
                     categories.remove(arg[1:])
 
             elif argtype == ArgType.PROPERTY:
@@ -143,12 +144,15 @@ class Todo:
 
                 arg_name_full = expand_prefix(arg_name, Todo.supported_properties())
 
-                arg_value = Todo.parse_property(config, arg_name_full, arg_raw_value)
-
                 if arg_name_full.upper() in icalendar.Todo.singletons and arg_name_full in todo:
                     del todo[arg_name_full]
 
-                todo.add(arg_name_full, arg_value, encode=True)
+                # If the value is an empty string,
+                # we just delete it.
+                if arg_raw_value != "":
+                    arg_value = Todo.parse_property(config, arg_name_full, arg_raw_value)
+                    todo.add(arg_name_full, arg_value, encode=True)
+
                 modified = True
 
             elif argtype == ArgType.STRING:
@@ -157,9 +161,9 @@ class Todo:
                 todo.add('summary', arg)
                 modified = True
 
+        if 'categories' in todo:
+            del todo['categories']
         if len(categories) > 0:
-            if 'categories' in todo:
-                del todo['categories']
             todo.add("categories", categories)
             modified = True
 
