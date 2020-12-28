@@ -10,6 +10,7 @@ reports:
     columns: id,calendar,summary,categories,status,due
     constraint: status.not_equals:completed 
     max_list_length: 30
+    max_column_width: 50
   today:
     columns: id,calendar,summary,due,categories
     constraint: due:tod

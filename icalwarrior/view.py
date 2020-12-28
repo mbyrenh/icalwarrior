@@ -137,12 +137,17 @@ def print_todo(config : Configuration, todo : icalendar.Todo) -> None:
 
     print_table(rows, cols)
 
-def print_table(rows : List[object], columns : List[str]) -> None:
+def print_table(rows : List[object], columns : List[str], max_col_width = 0) -> None:
 
     # Add single newline at the beginning
     # to make output more readable
     print()
+
+    formatted_cols = columns
+    if max_col_width > 0:
+        formatted_cols = [tableformatter.Column(col, width=max_col_width, wrap_mode=tableformatter.WrapMode.TRUNCATE_END) for col in columns]
+
     print(tableformatter.generate_table(
         rows,
-        columns,
+        formatted_cols,
         grid_style=ReportGrid()))

@@ -164,8 +164,13 @@ def show(ctx, report, constraints):
         fail(ctx,str(err))
     # Check if a maximum number of entries has been configured
     row_limit = len(todos)
+    max_column_width = 0
     try:
         row_limit = min(reports[report]['max_list_length'], row_limit)
+
+        if 'max_column_width' in reports[report]:
+            max_column_width = int(reports[report]['max_column_width'])
+
     except KeyError:
         pass
 
@@ -179,7 +184,7 @@ def show(ctx, report, constraints):
         rows.append(row)
 
     columns = [format_property_name(col) for col in columns]
-    print_table(rows, columns)
+    print_table(rows, columns, max_column_width)
     hint("Showing " + str(row_limit) + " out of " + str(len(todos)) + " todos.")
 
 @run_cli.command()
