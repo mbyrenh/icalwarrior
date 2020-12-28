@@ -331,3 +331,31 @@ def calculate(ctx, expr):
         fail(ctx,str(err))
     print(result.strftime(ctx.obj['config'].get_datetime_format()))
 
+
+@run_cli.command()
+@click.pass_context
+@click.argument('calendar',type=str,required=True)
+def cleanup(ctx, calendar):
+
+    cal_db = Calendars(ctx.obj['config'])
+    if calendar not in cal_db.get_calendars():
+        fail(ctx,"Calendar + " + calendar + " not found. Please check your configuration.")
+
+    try:
+        todos = cal_db.get_todos(["calendar:"+calendar, "and", "status:completed"])
+    except Exception as err:
+        fail(ctx,str(err))
+
+    if len(todos) == 0:
+        hint("No completed todos found in calendar " + calendar + ".")
+    else:
+        if click.confirm('Delete ' + str(len(todos)) + ' completed todos from calendar ' + calendar +'?'):
+            for todo in todos:
+                try:
+                    cal_db.delete_todo(todo)
+                except Exception as err:
+                    fail(ctx,str(err))
+                success("Successfully deleted todo " + str(todo['context']['id']))
+
+        else:
+            hint("No todos deleted from " + calendar + ".")
