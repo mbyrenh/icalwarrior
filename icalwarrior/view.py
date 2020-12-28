@@ -100,7 +100,7 @@ def format_property_value(config : Configuration, prop_name : str, todo : icalen
             result += " (" + humanize.naturaldelta(now - prop_value) + ")"
 
         elif type_fact.for_property(prop_name) is icalendar.prop.vText:
-            prop_value = icalendar.prop.vText.from_ical(todo[prop_name])
+            prop_value = str(todo[prop_name])
             result = prop_value
 
         elif type_fact.for_property(prop_name) is icalendar.prop.vInt:
