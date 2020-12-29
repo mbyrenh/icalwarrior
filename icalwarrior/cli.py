@@ -209,7 +209,7 @@ def done(ctx, ids):
 
     try:
         for todo in pending_todos:
-            Todo.set_properties(todo, ctx.obj['config'], ['status:completed', 'percent-complete:100'])
+            Todo.set_properties(todo, ctx.obj['config'], ['status:COMPLETED', 'percent-complete:100', 'completed:now'])
             todo_id = todo['context']['id']
             cal_db.write_todo(todo['context']['calendar'], todo)
             success("Set status of todo " + str(todo_id) + " to COMPLETED.")

@@ -154,6 +154,7 @@ def test_done():
     assert 'status' in todos[0]
     assert str(todos[0]['status']).lower() == 'completed'
     assert icalendar.prop.vInt.from_ical(todos[0]['percent-complete']) == 100
+    assert 'completed' in todos[0]
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 

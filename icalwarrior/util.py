@@ -131,6 +131,7 @@ def decode_date_formula(base_date : datetime, formula : str) -> datetime:
 def decode_date(date : str, config : Configuration) -> datetime:
 
     synonyms = {
+        "now" : datetime.datetime.now(),
         "today" : today_as_datetime(),
         "tomorrow" : (today_as_datetime() + relativedelta(days=+1)),
         "monday" : (today_as_datetime() + relativedelta(weekday=calendar.MONDAY)),

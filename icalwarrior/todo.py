@@ -32,6 +32,7 @@ class Todo:
         'due',
         'dtstart',
         'dtend',
+        'completed'
     ]
 
     TEXT_PROPERTIES = [
