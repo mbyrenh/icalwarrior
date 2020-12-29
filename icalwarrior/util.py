@@ -43,6 +43,8 @@ class InvalidDateFormatError(Exception):
 def remove_units(start_date : datetime, unit : str, quantity : int) -> datetime:
 
     result = {
+        "minutes" : start_date - relativedelta(minutes=+quantity),
+        "hours" : start_date - relativedelta(hours=+quantity),
         "days" : start_date - relativedelta(days=+quantity),
         "weeks" : start_date - relativedelta(weeks=+quantity),
         "months" : start_date - relativedelta(months=+quantity),
@@ -54,6 +56,8 @@ def remove_units(start_date : datetime, unit : str, quantity : int) -> datetime:
 def add_units(start_date : datetime, unit : str, quantity : int) -> datetime:
 
     result = {
+        "minutes" : start_date + relativedelta(minutes=+quantity),
+        "hours" : start_date + relativedelta(hours=+quantity),
         "days" : start_date + relativedelta(days=+quantity),
         "weeks" : start_date + relativedelta(weeks=+quantity),
         "months" : start_date + relativedelta(months=+quantity),
