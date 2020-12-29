@@ -2,6 +2,7 @@ import os
 import os.path
 import logging
 from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
+import icalendar
 from click.testing import CliRunner
 from icalwarrior.cli import run_cli
 from icalwarrior.calendars import Calendars
@@ -128,6 +129,31 @@ def test_property_removal():
     todos = cal_db.get_todos()
     assert len(todos) == 1
     assert 'due' not in todos[0]
+
+    remove_dummy_calendars(tmp_dir, config_file_path)
+
+def test_done():
+
+    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+
+    runner = CliRunner()
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask"])
+    assert result.exit_code == 0
+
+    config = Configuration(config_file_path)
+    cal_db = Calendars(config)
+    todos = cal_db.get_todos()
+    assert 'status' in todos[0]
+    assert str(todos[0]['status']).lower() == 'needs-action'
+
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "done", "1"])
+    assert result.exit_code == 0
+
+    cal_db = Calendars(config)
+    todos = cal_db.get_todos()
+    assert 'status' in todos[0]
+    assert str(todos[0]['status']).lower() == 'completed'
+    assert icalendar.prop.vInt.from_ical(todos[0]['percent-complete']) == 100
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 

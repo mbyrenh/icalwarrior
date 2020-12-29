@@ -209,12 +209,12 @@ def done(ctx, ids):
 
     try:
         for todo in pending_todos:
-            todo['status'] = 'completed'.upper()
+            Todo.set_properties(todo, ctx.obj['config'], ['status:completed', 'percent-complete:100'])
             todo_id = todo['context']['id']
             cal_db.write_todo(todo['context']['calendar'], todo)
             success("Set status of todo " + str(todo_id) + " to COMPLETED.")
     except Exception as err:
-        fail(ctx,str(err))
+        fail(ctx, str(err))
 
 
 @run_cli.command()
