@@ -17,7 +17,8 @@ setup(
         'termcolor',
         'pyyaml',
         'humanize',
-        'pytest'
+        'pytest',
+        'flake8'
     ],
 
     entry_points='''
