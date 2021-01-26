@@ -85,12 +85,12 @@ def calendars(ctx):
 @click.pass_context
 @click.argument('calendar', nargs=1, required=True)
 @click.argument('summary', nargs=1, required=True)
-@click.argument('properties',nargs=-1)
+@click.argument('properties', nargs=-1)
 def add(ctx, calendar, summary, properties):
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
-        fail(ctx,"No calendars found. Please check your configuration.")
+        fail(ctx, "No calendars found. Please check your configuration.")
 
     calendar_name = expand_prefix(calendar, cal_db.get_calendars())
     if calendar_name == "":
@@ -101,7 +101,7 @@ def add(ctx, calendar, summary, properties):
         Todo.set_properties(todo, ctx.obj['config'], ['summary:' + summary, 'status:needs-action'] + [p for p in properties])
         cal_db.write_todo(calendar_name, todo)
     except Exception as err:
-        fail(ctx,str(err))
+        fail(ctx, str(err))
     success("Successfully created new todo \"" + summary + "\".")
 
 @run_cli.command()
