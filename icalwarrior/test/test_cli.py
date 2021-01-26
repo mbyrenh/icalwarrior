@@ -48,13 +48,14 @@ def test_calendars():
 
 def test_adding():
 
-    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+    tmp_dir, config_file_path = setup_dummy_calendars(["test", "teft"])
 
     config = Configuration(config_file_path)
     cal_db = Calendars(config)
     assert len(cal_db.get_todos()) == 0
 
     runner = CliRunner()
+
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask", "+testcat", "due:today+3d", "dtstart:today+1d"])
     assert result.exit_code == 0
 
@@ -71,6 +72,16 @@ def test_adding():
     assert 'uid' in todos[0]
     assert 'status' in todos[0]
     assert str(todos[0]['status']).lower() == "needs-action"
+
+    # Test failure if given calendar name prefix is ambiguous
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "te", "Testtask 2"])
+    assert result.exit_code > 0
+
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "tef", "Testtask 2"])
+    assert result.exit_code == 0
+    cal_db = Calendars(config)
+    todos = cal_db.get_todos()
+    assert len(todos) == 2
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 
