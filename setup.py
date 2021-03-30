@@ -18,6 +18,7 @@ setup(
         'pyyaml',
         'humanize',
         'pytest',
+        'coverage',
         'flake8'
     ],
 
