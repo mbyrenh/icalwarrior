@@ -96,13 +96,20 @@ def add(ctx, calendar, summary, properties):
     if calendar_name == "":
         fail(ctx, "Unknown calendar \"" + calendar + ". Known calendars are " + ", ".join(cal_db.get_calendars()) + ".")
 
+    todo = None
     try:
         todo = Todo.create(cal_db.get_unused_uid())
         Todo.set_properties(todo, ctx.obj['config'], ['summary:' + summary, 'status:needs-action'] + [p for p in properties])
         cal_db.write_todo(calendar_name, todo)
     except Exception as err:
         fail(ctx, str(err))
-    success("Successfully created new todo \"" + summary + "\".")
+
+    # Re-read calendars to trigger id generation of todo
+    uid = todo['uid']
+    cal_db = Calendars(ctx.obj['config'])
+    todo = cal_db.get_todos(["uid:" + uid])[0]
+
+    success("Successfully created new todo \"" + todo['summary'] + "\" with ID " + str(todo["context"]["id"]) + ".")
 
 @run_cli.command()
 @click.pass_context

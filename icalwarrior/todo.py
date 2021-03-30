@@ -63,6 +63,7 @@ class Todo:
     ]
 
     TEXT_FILTER_PROPERTIES = [
+        'uid',
         'calendar'
     ]
 
