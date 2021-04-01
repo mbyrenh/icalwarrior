@@ -9,12 +9,16 @@ from typing import List
 import json
 import click
 import colorama
+import tableformatter
+import datetime
 from termcolor import colored
 from icalwarrior.configuration import Configuration, UnknownConfigurationOptionError
 from icalwarrior.calendars import Calendars
 from icalwarrior.todo import Todo
 from icalwarrior.util import expand_prefix, decode_date
-from icalwarrior.view import print_table, print_todo, format_property_name, format_property_value
+from icalwarrior.view.formatter import StringFormatter
+from icalwarrior.view.tagger import DueDateBasedTagger
+from icalwarrior.view.tabular import TabularToDoListView, TabularPrinter, TabularToDoView
 
 class InvalidArgumentException(Exception):
 
@@ -74,12 +78,13 @@ def calendars(ctx):
 
     cal_db = Calendars(ctx.obj['config'])
     for name in cal.get_calendars():
-        path = os.path.join(ctx.obj['config'].get_calendar_dir(),name)
+        path = os.path.join(ctx.obj['config'].get_calendar_dir(), name)
         todos = cal_db.get_todos(["cal:" + name])
-        completed_todos = cal_db.get_todos(["cal:"+ name, "and", "status:completed"])
+        completed_todos = cal_db.get_todos(["cal:" + name, "and", "status:completed"])
         rows.append([name, path, len(todos), len(completed_todos)])
 
-    print_table(rows,cols)
+    printer = TabularPrinter(rows, cols, 0, tableformatter.WrapMode.WRAP, None)
+    printer.print()
 
 @run_cli.command()
 @click.pass_context
@@ -156,11 +161,6 @@ def show(ctx, report, constraints):
     if report not in reports:
         ctx.fail("Unknown report \"" + report + "\". Known reports are " + ", ".join(reports.keys()) + ".")
 
-    if not "columns" in reports[report]:
-        ctx.fail("No colums specified for report \"" + report + "\".")
-
-    columns = reports[report]['columns'].split(",")
-
     if 'constraint' in reports[report]:
         if len(constraints) > 0:
             constraints = [c for c in constraints] + ['and'] + reports[report]['constraint'].split(" ")
@@ -168,33 +168,17 @@ def show(ctx, report, constraints):
             constraints = reports[report]['constraint'].split(" ")
 
     try:
-       todos = cal_db.get_todos(constraints)
-    except Exception as err:
-        fail(ctx,str(err))
-    # Check if a maximum number of entries has been configured
-    row_limit = len(todos)
-    max_column_width = 0
-    try:
+        todos = cal_db.get_todos(constraints)
+        row_limit = len(todos)
         row_limit = min(reports[report]['max_list_length'], row_limit)
 
-        if 'max_column_width' in reports[report]:
-            max_column_width = int(reports[report]['max_column_width'])
-
-    except KeyError:
-        pass
-
-    rows = []
-
-    for i in range(row_limit):
-        row = []
-        for column in columns:
-            row.append(format_property_value(ctx.obj['config'], column, todos[i]))
-
-        rows.append(row)
-
-    columns = [format_property_name(col) for col in columns]
-    print_table(rows, columns, max_column_width)
-    hint("Showing " + str(row_limit) + " out of " + str(len(todos)) + " todos.")
+        formatter = StringFormatter(ctx.obj['config'])
+        tagger = DueDateBasedTagger(todos, datetime.timedelta(days=7), datetime.timedelta(days=1))
+        view = TabularToDoListView(ctx.obj['config'], report, todos, formatter, tagger)
+        view.show()
+        hint("Showing " + str(row_limit) + " out of " + str(len(todos)) + " todos.")
+    except Exception as err:
+        fail(ctx,str(err))
 
 @run_cli.command()
 @click.pass_context
@@ -304,8 +288,9 @@ def info(ctx, identifier):
     if len(todos) < 1:
         fail(ctx,"Unknown identifier.")
 
-    print_todo(ctx.obj['config'], todos[0])
-
+    formatter = StringFormatter(ctx.obj['config'])
+    todoView = TabularToDoView(ctx.obj['config'], todos[0], formatter, None)
+    todoView.show()
 
 @run_cli.command()
 @click.pass_context
@@ -416,10 +401,12 @@ def export(ctx, constraints):
 
     objects = []
 
+    formatter = StringFormatter(ctx.obj['config'])
+
     for todo in todos:
         obj = {}
         for prop_name in todo:
-            obj[prop_name] = format_property_value(ctx.obj['config'], prop_name, todo)
+            obj[prop_name] = formatter.format_property_value(prop_name, todo)
 
         objects.append(obj)
 
