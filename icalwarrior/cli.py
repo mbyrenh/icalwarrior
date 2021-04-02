@@ -19,6 +19,7 @@ from icalwarrior.util import expand_prefix, decode_date
 from icalwarrior.view.formatter import StringFormatter
 from icalwarrior.view.tagger import DueDateBasedTagger
 from icalwarrior.view.tabular import TabularToDoListView, TabularPrinter, TabularToDoView
+from icalwarrior.view.sorter import ToDoSorter
 
 class InvalidArgumentException(Exception):
 
@@ -169,6 +170,8 @@ def show(ctx, report, constraints):
 
     try:
         todos = cal_db.get_todos(constraints)
+        todos = ToDoSorter(todos, "due").get_sorted()
+
         row_limit = len(todos)
         row_limit = min(reports[report]['max_list_length'], row_limit)
 
