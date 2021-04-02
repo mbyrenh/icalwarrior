@@ -25,7 +25,7 @@ class ReportGrid(tableformatter.Grid):
         self.border_left_header_divider = ''
         self.border_right_header_divider = ''
         self.border_header_divider_span = '─'
-        self.border_header_col_divider = '╪'
+        self.border_header_col_divider = '─'
         self.border_header_header_col_divider = '╬'
 
         self.border_left = True
