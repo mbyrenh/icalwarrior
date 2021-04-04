@@ -173,7 +173,9 @@ def show(ctx, report, constraints):
         todos = ToDoSorter(todos, "due").get_sorted()
 
         row_limit = len(todos)
-        row_limit = min(reports[report]['max_list_length'], row_limit)
+
+        if 'max_list_length' in reports[report]:
+            row_limit = min(reports[report]['max_list_length'], row_limit)
 
         formatter = StringFormatter(ctx.obj['config'])
         tagger = DueDateBasedTagger(todos, datetime.timedelta(days=7), datetime.timedelta(days=1))
