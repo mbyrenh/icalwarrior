@@ -142,7 +142,8 @@ class TabularToDoListView:
         row_limit = len(self.todos)
         max_column_width = 0
         try:
-            row_limit = min(report_config['max_list_length'], row_limit)
+            if 'max_list_length' in report_config:
+                row_limit = min(report_config['max_list_length'], row_limit)
 
             if 'max_column_width' in report_config:
                 max_column_width = int(report_config['max_column_width'])
