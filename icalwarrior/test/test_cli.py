@@ -22,6 +22,7 @@ def setup_dummy_calendars(calendars):
     config_file_path = os.path.join(gettempdir(), config_file.name)
 
     config_file.write(("calendars: " + tmp_dir.name + "\n").encode("utf-8"))
+    config_file.write(("info_columns: uid,summary,created,categories,description\n").encode("utf-8"))
     config_file.close()
 
     return (tmp_dir, config_file_path)
@@ -82,6 +83,22 @@ def test_adding():
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
     assert len(todos) == 2
+
+    remove_dummy_calendars(tmp_dir, config_file_path)
+
+def test_info():
+
+    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+
+    runner = CliRunner()
+
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask", "+testcat"])
+    assert result.exit_code == 0
+
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "info", "1"])
+
+    assert "Testtask" in result.output
+    assert "testcat" in result.output
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 

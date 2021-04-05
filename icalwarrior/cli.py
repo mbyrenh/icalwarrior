@@ -294,7 +294,7 @@ def info(ctx, identifier):
         fail(ctx,"Unknown identifier.")
 
     formatter = StringFormatter(ctx.obj['config'])
-    todoView = TabularToDoView(ctx.obj['config'], todos[0], formatter, None)
+    todoView = TabularToDoView(ctx.obj['config'], todos[0], formatter)
     todoView.show()
 
 @run_cli.command()

@@ -174,7 +174,7 @@ class TabularToDoView:
 
     def show(self) -> None:
 
-        property_order = self.config.get_config_str(['info_columns']).split(",")
+        property_order = self.config.get_config(['info_columns']).split(",")
 
         cols = ["Property", "Value"]
 
@@ -186,6 +186,6 @@ class TabularToDoView:
                     self.formatter.format_property_value(prop, self.todo)
                 ])
 
-        printer = TabularPrinter(rows, cols, 0, tableformatter.WrapMode.TRUNCATE_END)
+        printer = TabularPrinter(rows, cols, 0, tableformatter.WrapMode.TRUNCATE_END, None)
         printer.print()
 
