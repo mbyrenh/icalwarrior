@@ -199,13 +199,20 @@ def test_deletion():
     todos = cal_db.get_todos()
     assert len(todos) == 1
 
-    result = runner.invoke(run_cli, ["-c", str(config_file_path), "del", "1"])
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "del", "1"],input="y")
     assert result.exit_code == 0
 
     config = Configuration(config_file_path)
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
     assert len(todos) == 0
+
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask", "due:today", "+testcat"])
+    assert result.exit_code == 0
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask2", "due:today", "+testcat"])
+    assert result.exit_code == 0
+
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "del", "1", "2"],input="yy")
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 

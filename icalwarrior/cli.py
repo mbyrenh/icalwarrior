@@ -240,10 +240,11 @@ def delete(ctx, ids):
 
     for todo in todos:
         try:
-            cal_db.delete_todo(todo)
+            if click.confirm('Delete todo ' + str(todo['context']['id']) + ' "' + str(todo['summary']) + '"?'):
+                cal_db.delete_todo(todo)
+                success("Successfully deleted todo " + str(todo['context']['id']))
         except Exception as err:
             fail(ctx,str(err))
-        success("Successfully deleted todo " + str(todo['context']['id']))
 
 @run_cli.command()
 @click.pass_context
