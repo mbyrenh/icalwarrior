@@ -31,6 +31,14 @@ class InvalidConstraintFormatError(Exception):
     def __str__(self):
         return "Invalid constraint \"" + self.constraint + "\". Constraint format is NAME[.OPERATOR]:VALUE"
 
+class InvalidFilterExpressionError(Exception):
+
+    def __init__(self, expression : str) -> None:
+        self.expression = expression
+
+    def __str__(self):
+        return "Invalid filter expression \"" + self.expression + "\"."
+
 class Calendars:
 
     def __init__(self, config : Configuration) -> None:
@@ -139,50 +147,69 @@ class Calendars:
 
             for todo in self.todos:
 
+                previous_constraint_type = "NONE"
+
                 buf = ""
                 for constraint in constraints:
 
                     if constraint in ("and", "or"):
+
+                        if (previous_constraint_type != "PROPERTY_VALUE"):
+                            raise InvalidFilterExpressionError(constraint)
+
                         buf += " " + constraint + " "
-
-                    elif constraint.startswith(constants.CATEGORY_INCLUDE_PREFIX) or constraint.startswith(constants.CATEGORY_EXCLUDE_PREFIX):
-
-                        prop_name = "categories"
-
-                        if constraint.startswith(constants.CATEGORY_INCLUDE_PREFIX):
-                            prop_val = constraint[len(constants.CATEGORY_INCLUDE_PREFIX):]
-                            operator = "contains"
-                        else:
-                            prop_val = constraint[len(constants.CATEGORY_EXCLUDE_PREFIX):]
-                            operator = "not_contains"
-
-                        if Constraint.evaluate(self.config, todo, prop_name, operator, prop_val):
-                            buf += "True"
-                        else:
-                            buf += "False"
+                        previous_constraint_type = "LOGIC_RELATION"
 
                     else:
 
-                        col_pos = constraint.find(":")
-                        if col_pos == -1:
-                            raise InvalidConstraintFormatError(constraint)
+                        if previous_constraint_type == "PROPERTY_VALUE":
+                            buf += " and "
 
-                        dot_pos = constraint[0:col_pos].find(".")
-                        if dot_pos != -1:
-                            operator = constraint[dot_pos+1:col_pos]
-                            prop_name = expand_prefix(constraint[0:dot_pos], Todo.supported_filter_properties())
+                        if constraint.startswith(constants.CATEGORY_INCLUDE_PREFIX) or constraint.startswith(constants.CATEGORY_EXCLUDE_PREFIX):
+
+                            prop_name = "categories"
+
+                            if constraint.startswith(constants.CATEGORY_INCLUDE_PREFIX):
+                                prop_val = constraint[len(constants.CATEGORY_INCLUDE_PREFIX):]
+                                operator = "contains"
+                            else:
+                                prop_val = constraint[len(constants.CATEGORY_EXCLUDE_PREFIX):]
+                                operator = "not_contains"
+
+                            if Constraint.evaluate(self.config, todo, prop_name, operator, prop_val):
+                                buf += "True"
+                            else:
+                                buf += "False"
+
                         else:
-                            operator = "equals"
-                            prop_name = expand_prefix(constraint[0:col_pos], Todo.supported_filter_properties())
 
-                        prop_val = constraint[col_pos+1:]
+                            col_pos = constraint.find(":")
+                            if col_pos == -1:
+                                raise InvalidConstraintFormatError(constraint)
 
-                        if Constraint.evaluate(self.config, todo, prop_name, operator, prop_val):
-                            buf += "True"
-                        else:
-                            buf += "False"
+                            dot_pos = constraint[0:col_pos].find(".")
+                            if dot_pos != -1:
+                                operator = constraint[dot_pos+1:col_pos]
+                                prop_name = expand_prefix(constraint[0:dot_pos], Todo.supported_filter_properties())
+                            else:
+                                operator = "equals"
+                                prop_name = expand_prefix(constraint[0:col_pos], Todo.supported_filter_properties())
 
-                if eval(buf):
-                    result.append(todo)
+                            prop_val = constraint[col_pos+1:]
+
+                            if Constraint.evaluate(self.config, todo, prop_name, operator, prop_val):
+                                buf += "True"
+                            else:
+                                buf += "False"
+
+                        previous_constraint_type = "PROPERTY_VALUE"
+
+                if previous_constraint_type == "PROPERTY_VALUE":
+
+                    if eval(buf):
+                        result.append(todo)
+
+                else:
+                    raise InvalidFilterExpressionError(constraint)
 
         return result
