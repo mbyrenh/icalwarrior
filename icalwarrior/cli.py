@@ -159,14 +159,16 @@ def show(ctx, report, constraints):
     # and constraints
     reports = ctx.obj['config'].get_config(['reports'])
 
-    if report not in reports:
-        ctx.fail("Unknown report \"" + report + "\". Known reports are " + ", ".join(reports.keys()) + ".")
+    report_expanded = expand_prefix(report, reports.keys())
 
-    if 'constraint' in reports[report]:
+    if report_expanded == "":
+        ctx.fail("Unknown or ambiguous report name \"" + report + "\". Known reports are " + ", ".join(reports.keys()) + ".")
+
+    if 'constraint' in reports[report_expanded]:
         if len(constraints) > 0:
-            constraints = [c for c in constraints] + ['and'] + reports[report]['constraint'].split(" ")
+            constraints = [c for c in constraints] + ['and'] + reports[report_expanded]['constraint'].split(" ")
         else:
-            constraints = reports[report]['constraint'].split(" ")
+            constraints = reports[report_expanded]['constraint'].split(" ")
 
     try:
         todos = cal_db.get_todos(constraints)
@@ -174,12 +176,12 @@ def show(ctx, report, constraints):
 
         row_limit = len(todos)
 
-        if 'max_list_length' in reports[report]:
-            row_limit = min(reports[report]['max_list_length'], row_limit)
+        if 'max_list_length' in reports[report_expanded]:
+            row_limit = min(reports[report_expanded]['max_list_length'], row_limit)
 
         formatter = StringFormatter(ctx.obj['config'])
         tagger = DueDateBasedTagger(todos, datetime.timedelta(days=7), datetime.timedelta(days=1))
-        view = TabularToDoListView(ctx.obj['config'], report, todos, formatter, tagger)
+        view = TabularToDoListView(ctx.obj['config'], report_expanded, todos, formatter, tagger)
         view.show()
         hint("Showing " + str(row_limit) + " out of " + str(len(todos)) + " todos.")
     except Exception as err:
