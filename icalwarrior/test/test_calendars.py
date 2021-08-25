@@ -99,3 +99,23 @@ def test_get_todo_logic_operators():
         todos = cal_db.get_todos(["+right", "or", "or", "summary.contains:test"])
 
     remove_dummy_calendars(tmp_dir, config_file_path)
+
+def test_default_values_for_properties():
+
+    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+
+    config = Configuration(config_file_path)
+    cal_db = Calendars(config)
+
+    todo = Todo.create(cal_db.get_unused_uid())
+    Todo.set_properties(todo, config, ['summary:test_wrong'])
+    cal_db.write_todo("test", todo)
+
+    cal_db = Calendars(config)
+    todos = cal_db.get_todos(["status:needs-action"])
+    assert len(todos) == 1
+
+    todos = cal_db.get_todos(["status.not_eq:completed"])
+    assert len(todos) == 1
+
+    remove_dummy_calendars(tmp_dir, config_file_path)

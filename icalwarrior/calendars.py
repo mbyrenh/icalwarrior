@@ -60,6 +60,19 @@ class Calendars:
                 result[name] = calPath
         return result
 
+    DEFAULT_PROPERTY_VALUES = {
+        'status' : 'needs-action'
+    }
+
+    @staticmethod
+    def __set_default_values(todo : Todo) -> None:
+        for prop_name, prop_val in Calendars.DEFAULT_PROPERTY_VALUES.items():
+
+            if not prop_name in todo:
+                factory = icalendar.TypesFactory().for_property(prop_name)
+                parsed_val = factory(factory.from_ical(prop_val))
+                todo.add(prop_name, parsed_val, encode=0)
+
     def __read_todos(self) -> None:
 
         todo_id = 1
@@ -75,6 +88,11 @@ class Calendars:
                     # Add context information to be used for filtering etc.
                     todo['context'] = {'calendar' : current_calendar, 'id' : todo_id}
                     todo_id += 1
+
+                    # Add default values for properties that are missing, so that we do not
+                    # need to handle absent values during filtering etc.
+                    Calendars.__set_default_values(todo)
+
                     self.todos.append(todo)
                 ical_file.close()
 
