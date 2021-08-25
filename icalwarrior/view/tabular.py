@@ -180,11 +180,14 @@ class TabularToDoView:
 
         rows = []
         for prop in property_order:
-            rows.append(
-                [
-                    self.formatter.format_property_name(prop),
-                    self.formatter.format_property_value(prop, self.todo)
-                ])
+
+            if prop in self.todo:
+
+                rows.append(
+                    [
+                        self.formatter.format_property_name(prop),
+                        self.formatter.format_property_value(prop, self.todo)
+                    ])
 
         printer = TabularPrinter(rows, cols, 0, tableformatter.WrapMode.TRUNCATE_END, None)
         printer.print()
