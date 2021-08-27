@@ -1,6 +1,9 @@
 install: test
 	pip install .
 
+htmldoc:
+	sphinx-build -b html doc/source doc/build/html
+
 mypy:
 	mypy icalwarrior/*.py
 
@@ -12,4 +15,4 @@ test:
 	mkdir -p out/coverage
 	coverage html -d out/coverage
 
-.PHONY: install test mypy lint
+.PHONY: install test mypy lint htmldoc
