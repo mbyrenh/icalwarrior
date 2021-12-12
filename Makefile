@@ -5,7 +5,7 @@ htmldoc:
 	sphinx-build -b html doc/source doc/build/html
 
 mypy:
-	mypy icalwarrior/*.py
+	MYPYPATH=stubs mypy icalwarrior/*.py
 
 lint:
 	flake8 icalwarrior/*.py
