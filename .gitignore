@@ -1,2 +1,8 @@
 __pycache__
 Session.vim
+venv
+out
+.mypy_cache
+build
+.buildinfo
+.doctrees
