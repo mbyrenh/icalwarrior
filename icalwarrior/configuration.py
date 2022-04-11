@@ -26,10 +26,6 @@ class Configuration:
     def get_default_config_path() -> str:
         return str(Path.home()) + "/.config/ical/config.yaml"
 
-    @staticmethod
-    def get_default_data_path() -> str:
-        return str(Path.home()) + "/.local/share/ical"
-
     def get_config(self, option_path : List[str]) -> object:
         option = self.config
 
@@ -40,12 +36,6 @@ class Configuration:
             raise UnknownConfigurationOptionError(element) from err
 
         return option
-
-    def get_data_path(self) -> str:
-        result = Configuration.get_default_data_path()
-        if 'dataPath' in self.config:
-            result = self.config['dataPath']
-        return result
 
     def get_calendar_dir(self) -> List[str]:
         """Returns a list of paths containing calendar directories."""
