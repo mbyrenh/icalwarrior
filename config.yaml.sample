@@ -1,3 +1,9 @@
+# The calendars option specifies the path to where the different ical calendars holding 
+# tasks are stored, where each calendar is represented by a separate directory.
+# For example, if you would like to have todo lists "ProjectA", "ProjectB", "home", which are
+# stored under $HOME/.todos, then you can create the directories $HOME/.todos/ProjectA and so on
+# and set the "calendars" config value to "$HOME/.todos".
+# To check whether the calendars are detected succesfully, you can then call "todo calendars".
 calendars: 
 
 datetime_format: "%Y-%m-%dT%H:%M:%S"
