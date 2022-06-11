@@ -5,6 +5,7 @@ import pytest
 
 from icalwarrior.util import decode_date, InvalidDateFormatError, InvalidDateFormulaError
 from icalwarrior.configuration import Configuration
+from icalwarrior.constants import RELATIVE_DATE_TIME_SEPARATOR
 
 class DummyConfiguration:
 
@@ -16,10 +17,10 @@ class DummyConfiguration:
         result = self.datetimeformat
         return result
 
-def today_as_datetime() -> datetime.datetime:
-    return datetime.datetime.combine(datetime.date.today(), datetime.datetime.min.time(), tz.gettz())
+def today_as_date() -> datetime.date:
+    return datetime.date.today()
 
-def test_date_decode_format():
+def test_absolute_date_decode():
 
     config = DummyConfiguration()
     config.dateformat = "%Y-%m-%d"
@@ -30,9 +31,39 @@ def test_date_decode_format():
 
     assert result == datetime.datetime(2000,8,14)
 
+def test_absolute_date_with_time_decode():
+
+    config = DummyConfiguration()
+    config.dateformat = "%Y-%m-%d"
+    config.datetimeformat = "%Y-%m-%dT%H:%M:%S"
+
     datestr = "2000-08-14T12:34:01"
     result = decode_date(datestr, config)
     assert result == datetime.datetime(2000,8,14,12,34,1)
+
+def test_relative_date_decode():
+
+    config = DummyConfiguration()
+    config.dateformat = "%Y-%m-%d"
+    config.timeformat = "%H:%M:%S"
+    config.datetimeformat = config.dateformat + "T" + config.timeformat
+
+    datestr = "today+2d"
+    result = decode_date(datestr, config)
+
+    assert result == today_as_date() + relativedelta(days=+2)
+
+def test_relative_date_with_time_decode():
+
+    config = DummyConfiguration()
+    config.dateformat = "%Y-%m-%d"
+    config.timeformat = "%H:%M"
+    config.datetimeformat = config.dateformat + "T" + config.timeformat
+
+    datestr = "today" + RELATIVE_DATE_TIME_SEPARATOR + "12:34+2d"
+    result = decode_date(datestr, config)
+    expected = datetime.datetime.combine(today_as_date(), datetime.time(12,34), tz.gettz()) + relativedelta(days=+2)
+    assert result == expected
 
 def test_date_decode_invalid_format():
 
@@ -48,7 +79,7 @@ def test_date_decode_invalid_format():
     with pytest.raises(InvalidDateFormatError):
         datestr = "14.08.2020"
         result = decode_date(datestr, config)
-    with pytest.raises(InvalidDateFormulaError):
+    with pytest.raises(InvalidDateFormatError):
         datestr = "2000-08-14T12:34:011"
         result = decode_date(datestr, config)
 
@@ -60,7 +91,7 @@ def test_date_decode_formula():
 
     result = decode_date(datestr, config)
 
-    assert result == today_as_datetime() + relativedelta(weeks=+2) - relativedelta(days=+2)
+    assert result == today_as_date() + relativedelta(weeks=+2) - relativedelta(days=+2)
 
 def test_date_decode_invalid_formula():
     config = DummyConfiguration()
