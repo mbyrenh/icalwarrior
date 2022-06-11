@@ -96,7 +96,7 @@ class Calendars:
                     self.todos.append(todo)
                 ical_file.close()
 
-    def calendarExists(self, calendar : str) -> bool:
+    def calendar_exists(self, calendar : str) -> bool:
         return calendar in self.calendars
 
     def get_calendars(self) -> List[str]:
@@ -122,7 +122,7 @@ class Calendars:
 
     def write_todo(self, calendar : str, todo : icalendar.Todo) -> None:
 
-        assert self.calendarExists(calendar)
+        assert self.calendar_exists(calendar)
 
         # Remove context information if necessary.
         # Todo has no context if it was just added.
