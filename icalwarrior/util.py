@@ -1,12 +1,13 @@
 from typing import List
 
 
-from icalwarrior.configuration import Configuration
-import datetime
-from dateutil.relativedelta import *
-import dateutil.tz as tz
 import calendar
+import datetime
+from dateutil.relativedelta import relativedelta
+import dateutil.tz as tz
 import icalendar
+import icalwarrior.constants as constants
+from icalwarrior.configuration import Configuration
 
 def expand_prefix(prefix : str, candidates : List[str]) -> str:
 
@@ -164,9 +165,9 @@ def decode_relative_date(date : str, config : Configuration) -> datetime.date | 
     if i < len(date) and date[i] == constants.RELATIVE_DATE_TIME_SEPARATOR:
         i = i + 1
         now = datetime.datetime.now(tz.gettz())
-        time_len = len(now.strftime(config.get_time_format()))
+        time_len = len(now.strftime(config.get_time_format_for_relative_dates()))
         try:
-            decoded_time = datetime.datetime.strptime(date[i:i+time_len], config.get_time_format()).time()
+            decoded_time = datetime.datetime.strptime(date[i:i+time_len], config.get_time_format_for_relative_dates()).time()
             result = datetime.datetime.combine(
                 result,
                 decoded_time,

@@ -56,3 +56,6 @@ class Configuration:
         if 'date_format' in self.config:
             result = self.config['date_format']
         return result
+
+    def get_time_format_for_relative_dates(self) -> str:
+        return constants.RELATIVE_DATE_TIME_FORMAT
