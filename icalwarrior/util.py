@@ -207,3 +207,15 @@ def decode_date(date : str, config : Configuration) -> datetime.date | datetime.
 
     return decode_relative_date(date, config)
 
+synonyms = {
+    "now" : datetime.datetime.now(),
+    "today" : today_as_date(),
+    "tomorrow" : tomorrow_as_date,
+    "monday" : (tomorrow_as_date() + relativedelta(weekday=calendar.MONDAY)),
+    "tuesday" : (tomorrow_as_date() + relativedelta(weekday=calendar.TUESDAY)),
+    "wednesday" : (tomorrow_as_date() + relativedelta(weekday=calendar.WEDNESDAY)),
+    "thursday" : (tomorrow_as_date() + relativedelta(weekday=calendar.THURSDAY)),
+    "friday" : (tomorrow_as_date() + relativedelta(weekday=calendar.FRIDAY)),
+    "saturday" : (tomorrow_as_date() + relativedelta(weekday=calendar.SATURDAY)),
+    "sunday" : (tomorrow_as_date() + relativedelta(weekday=calendar.SUNDAY))
+    }

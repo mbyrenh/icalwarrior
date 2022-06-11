@@ -3,7 +3,7 @@ from dateutil.relativedelta import *
 import dateutil.tz as tz
 import pytest
 
-from icalwarrior.util import decode_date, InvalidDateFormatError, InvalidDateFormulaError
+from icalwarrior.util import decode_date, InvalidDateFormatError, InvalidDateFormulaError, synonyms 
 from icalwarrior.configuration import Configuration
 from icalwarrior.constants import RELATIVE_DATE_TIME_SEPARATOR
 
@@ -82,6 +82,21 @@ def test_date_decode_invalid_format():
     with pytest.raises(InvalidDateFormatError):
         datestr = "2000-08-14T12:34:011"
         result = decode_date(datestr, config)
+
+def test_relative_date_not_same_day():
+    config = DummyConfiguration()
+    config.dateformat = "%Y-%m-%d"
+    config.timeformat = "%H:%M:%S"
+    config.datetimeformat = config.dateformat + "T" + config.timeformat
+
+    datestr = "today"
+    today = decode_date(datestr, config)
+
+    # For each weekday, make sure it never returns today
+    for day, day_date in synonyms.items():
+
+        if day != "today":
+            assert day_date != today
 
 def test_date_decode_formula():
     datestr = "tod+2w-2d"
