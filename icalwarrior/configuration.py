@@ -15,8 +15,6 @@ class UnknownConfigurationOptionError(Exception):
 
 class Configuration:
 
-    config = None
-
     def __init__(self, configFile : str) -> None:
         config_handle = open(configFile)
         self.config = yaml.load(config_handle, Loader=yaml.Loader)
