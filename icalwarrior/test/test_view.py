@@ -1,9 +1,13 @@
 from typing import List
 import pytest
 
-from icalwarrior.todo import Todo
+from icalwarrior.todo import TodoPropertyHandler
+from icalwarrior.calendars import Calendars
 from icalwarrior.view.tabular import TabularToDoView
 from icalwarrior.view.formatter import StringFormatter
+from icalwarrior.configuration import Configuration
+
+from icalwarrior.test.util import setup_dummy_calendars, remove_dummy_calendars
 
 class DummyConfiguration:
 
@@ -44,18 +48,21 @@ class DummyConfiguration:
 
 def test_tabular_todo_view(capsys):
 
-    config = DummyConfiguration()
-    config.set_config(['info_columns'],"uid,summary,due,description")
-    config.dateformat = "%Y-%m-%d"
-    config.datetimeformat = "%Y-%m-%dT%H:%M:%S"
+    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+    config = Configuration(config_file_path)
+    cal_db = Calendars(config)
+
+    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo.set_properties({
+        'summary': 'Test ToDo',
+        'status': 'needs-action'})
+    todo.get_ical_todo()['context'] = {}
+    todo.get_context()['calendar'] = 'test'
+    todo.get_context()['id'] = 1234
+
     formatter = StringFormatter(config)
-
-    todo = Todo.create("todo1234")
-    Todo.set_properties(todo, config, ['summary:Test ToDo', 'status:needs-action'])
-    todo['context'] = {'calendar' : 'test', 'id' : 1}
-
     test_view = TabularToDoView(config, todo, formatter)
     test_view.show()
 
     out = capsys.readouterr()
-    assert "todo1234" in out.out
+    assert "Test ToDo" in out.out

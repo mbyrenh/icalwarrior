@@ -14,6 +14,7 @@ setup(
     packages=find_packages(include=["icalwarrior", "icalwarrior.*"]),
 
     install_requires=[
+        'mypy',
         'click',
         'icalendar',
         'tableformatter',
@@ -23,7 +24,11 @@ setup(
         'humanize',
         'pytest',
         'coverage',
-        'flake8'
+        'flake8',
+        'types-PyYAML',
+        'types-python-dateutil',
+        'types-termcolor',
+        'types-colorama'
     ],
 
     entry_points='''

@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 from abc import abstractmethod
 
 from colorama import Fore
@@ -8,35 +8,37 @@ import dateutil.tz as tz
 import tableformatter
 
 from icalwarrior.util import adapt_datetype
+from icalwarrior.todo import TodoPropertyHandler
 
 class Tagger:
 
     @abstractmethod
-    def tag(self, row : Tuple) -> dict:
+    def tag(self, row : List[str]) -> Dict[str, int]:
         pass
 
 class DueDateBasedTagger(Tagger):
 
     def __init__(self,
-                 todos : List[icalendar.Todo],
+                 todos : List[TodoPropertyHandler],
                  past_threshold : datetime.timedelta,
                  future_threshold : datetime.timedelta) -> None:
 
-        self.todos = {}
+        self.todos: Dict[str, TodoPropertyHandler] = {}
         for todo in todos:
-            self.todos[todo["context"]["id"]] = todo
+            todo_context = todo.get_context()
+            self.todos[str(todo_context["id"])] = todo
 
         self.past_threshold = past_threshold
         self.future_threshold = future_threshold
         self.date = datetime.datetime.now(tz.gettz())
 
-    def tag(self, row : Tuple) -> dict:
-        opts = {}
+    def tag(self, row : List[str]) -> Dict[str, int]:
+        opts : Dict[str, int] = {}
 
         todo = self.todos[row[0]]
 
-        if "due" in todo:
-            due_date = icalendar.prop.vDDDTypes.from_ical(todo["due"])
+        if todo.has_property("due"):
+            due_date = todo.get_date_or_datetime("due")
             now = adapt_datetype(self.date, due_date)
 
             if due_date > now and due_date - now > self.future_threshold:

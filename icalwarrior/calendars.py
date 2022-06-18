@@ -1,13 +1,14 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 import os
 import os.path
-import _pickle as pickle
 import uuid
+import datetime
+import dateutil.tz as tz
 
 import icalendar
 
 from icalwarrior import __author__,__productname__,__version__
-from icalwarrior.todo import Todo
+from icalwarrior.todo import TodoPropertyHandler
 from icalwarrior.configuration import Configuration
 from icalwarrior.filter import Constraint
 from icalwarrior.util import expand_prefix
@@ -20,7 +21,7 @@ class DuplicateCalendarNameError(Exception):
         self.firstCalDir = firstCalDir
         self.secondCalDir = secondCalDir
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ("Duplicate name '" + self.calendarName + "' found in " + self.firstCalDir + " and " + self.secondCalDir)
 
 class InvalidConstraintFormatError(Exception):
@@ -28,7 +29,7 @@ class InvalidConstraintFormatError(Exception):
     def __init__(self, constraint : str) -> None:
         self.constraint = constraint
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Invalid constraint \"" + self.constraint + "\". Constraint format is NAME[.OPERATOR]:VALUE"
 
 class InvalidFilterExpressionError(Exception):
@@ -36,7 +37,7 @@ class InvalidFilterExpressionError(Exception):
     def __init__(self, expression : str) -> None:
         self.expression = expression
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Invalid filter expression \"" + self.expression + "\"."
 
 class Calendars:
@@ -45,11 +46,11 @@ class Calendars:
         self.config = config
         self.calendars = self.__scan_calendars()
 
-        self.todos = []
+        self.todos : List[TodoPropertyHandler] = []
         self.__read_todos()
 
     def __scan_calendars(self) -> Dict[str, str]:
-        result = {}
+        result : Dict[str, str] = {}
         calDir = self.config.get_calendar_dir()
         calNames = os.listdir(calDir)
         for name in calNames:
@@ -65,13 +66,13 @@ class Calendars:
     }
 
     @staticmethod
-    def __set_default_values(todo : Todo) -> None:
+    def __set_default_values(todo : icalendar.Todo) -> None:
         for prop_name, prop_val in Calendars.DEFAULT_PROPERTY_VALUES.items():
 
             if not prop_name in todo:
-                factory = icalendar.TypesFactory().for_property(prop_name)
+                factory = icalendar.prop.TypesFactory().for_property(prop_name)
                 parsed_val = factory(factory.from_ical(prop_val))
-                todo.add(prop_name, parsed_val, encode=0)
+                todo.add(prop_name, parsed_val, encode=False)
 
     def __read_todos(self) -> None:
 
@@ -93,19 +94,19 @@ class Calendars:
                     # need to handle absent values during filtering etc.
                     Calendars.__set_default_values(todo)
 
-                    self.todos.append(todo)
+                    self.todos.append(TodoPropertyHandler(self.config, todo))
                 ical_file.close()
 
     def calendar_exists(self, calendar : str) -> bool:
         return calendar in self.calendars
 
     def get_calendars(self) -> List[str]:
-        return self.calendars.keys()
+        return list(self.calendars.keys())
 
     def get_unused_uid(self) -> str:
-        uid = uuid.uuid4()
+        uid = str(uuid.uuid4())
         while not self.is_unique_uid(uid):
-            uid = uuid.uuid4()
+            uid = str(uuid.uuid4())
         return uid
 
     def is_unique_uid(self, uid : str) -> bool:
@@ -114,7 +115,7 @@ class Calendars:
         todos = self.get_todos()
 
         for todo in todos:
-            if todo['uid'] == uid:
+            if todo.get_string('uid') == uid:
                 result = False
                 break
 
@@ -141,6 +142,17 @@ class Calendars:
         file_handle.write(todo_cal.to_ical())
         file_handle.close()
 
+    def create_todo(self) -> icalendar.Todo:
+        todo = icalendar.Todo()
+
+        uid = self.get_unused_uid()
+        todo.add('uid', uid)
+        now = datetime.datetime.now(tz.gettz())
+        todo.add('dtstamp', now, encode=True)
+        todo.add('created', now, encode=True)
+
+        return todo
+
     def move_todo(self, uid : str, source : str, destination : str) -> None:
 
         src_path = os.path.join(self.config.get_calendar_dir(),source,uid + ".ics")
@@ -154,11 +166,11 @@ class Calendars:
         path = os.path.join(self.config.get_calendar_dir(),cal_name,todo['uid'] + ".ics")
         os.remove(path)
 
-    def get_todos(self, constraints = None) -> List[icalendar.Todo]:
+    def get_todos(self, constraints : Optional[List[str]] = None) -> List[TodoPropertyHandler]:
 
         result = []
 
-        if constraints == None or len(constraints) == 0:
+        if constraints is None or len(constraints) == 0:
             result = self.todos
 
         else:
@@ -208,10 +220,10 @@ class Calendars:
                             dot_pos = constraint[0:col_pos].find(".")
                             if dot_pos != -1:
                                 operator = constraint[dot_pos+1:col_pos]
-                                prop_name = expand_prefix(constraint[0:dot_pos], Todo.supported_filter_properties())
+                                prop_name = expand_prefix(constraint[0:dot_pos], TodoPropertyHandler.supported_filter_properties())
                             else:
                                 operator = "equals"
-                                prop_name = expand_prefix(constraint[0:col_pos], Todo.supported_filter_properties())
+                                prop_name = expand_prefix(constraint[0:col_pos], TodoPropertyHandler.supported_filter_properties())
 
                             prop_val = constraint[col_pos+1:]
 

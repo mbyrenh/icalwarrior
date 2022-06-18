@@ -1,5 +1,4 @@
-from typing import List
-
+from typing import List, Iterable, Union, Dict
 
 import calendar
 import datetime
@@ -9,7 +8,18 @@ import icalendar
 import icalwarrior.constants as constants
 from icalwarrior.configuration import Configuration
 
-def expand_prefix(prefix : str, candidates : List[str]) -> str:
+class InvalidEnumValueError(Exception):
+
+    def __init__(self, prop : str, given : str, supported : List[str]) -> None:
+        self.prop = prop
+        self.given = given
+        self.supported = supported
+
+    def __str__(self) -> str:
+        return "Invalid value \"" + self.given + "\" for property \"" + self.prop + "\". Supported values are " + ", ".join(self.supported)
+
+
+def expand_prefix(prefix : str, candidates : Iterable[str]) -> str:
 
     result = ""
 
@@ -28,41 +38,41 @@ class InvalidDateFormulaError(Exception):
     def __init__(self, error : str) -> None:
         self.error = error
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Invalid date format: " + self.error
 
 class InvalidDateFormatError(Exception):
 
-    def __init__(self, date_format : str, datetime_format : str, synonyms : List[str]) -> None:
+    def __init__(self, date_format : str, datetime_format : str, synonyms : Iterable[str]) -> None:
         self.date_format = date_format
         self.datetime_format = datetime_format
         self.synonyms = synonyms
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Invalid date format. Expected format is " + self.date_format + " or " + self.datetime_format + " or a synonym from " + ", ".join(self.synonyms) + "."
 
-def remove_units(start_date : datetime, unit : str, quantity : int) -> datetime:
+def remove_units(start_date : datetime.date | datetime.datetime, unit : str, quantity : int) -> datetime.date | datetime.datetime:
 
     result = {
-        "minutes" : start_date - relativedelta(minutes=+quantity),
-        "hours" : start_date - relativedelta(hours=+quantity),
-        "days" : start_date - relativedelta(days=+quantity),
-        "weeks" : start_date - relativedelta(weeks=+quantity),
-        "months" : start_date - relativedelta(months=+quantity),
-        "years" : start_date - relativedelta(years=+quantity)
+        "minutes": start_date - relativedelta(minutes=+quantity),
+        "hours": start_date - relativedelta(hours=+quantity),
+        "days": start_date - relativedelta(days=+quantity),
+        "weeks": start_date - relativedelta(weeks=+quantity),
+        "months": start_date - relativedelta(months=+quantity),
+        "years": start_date - relativedelta(years=+quantity)
     }[unit]
 
     return result
 
-def add_units(start_date : datetime, unit : str, quantity : int) -> datetime:
+def add_units(start_date : datetime.date | datetime.datetime, unit : str, quantity : int) -> datetime.date | datetime.datetime:
 
     result = {
-        "minutes" : start_date + relativedelta(minutes=+quantity),
-        "hours" : start_date + relativedelta(hours=+quantity),
-        "days" : start_date + relativedelta(days=+quantity),
-        "weeks" : start_date + relativedelta(weeks=+quantity),
-        "months" : start_date + relativedelta(months=+quantity),
-        "years" : start_date + relativedelta(years=+quantity)
+        "minutes": start_date + relativedelta(minutes=+quantity),
+        "hours": start_date + relativedelta(hours=+quantity),
+        "days": start_date + relativedelta(days=+quantity),
+        "weeks": start_date + relativedelta(weeks=+quantity),
+        "months": start_date + relativedelta(months=+quantity),
+        "years": start_date + relativedelta(years=+quantity)
     }[unit]
 
     return result
@@ -79,20 +89,31 @@ def today_as_date() -> datetime.date:
 def tomorrow_as_date() -> datetime.date:
     return today_as_date() + relativedelta(days=+1)
 
+def adapt_datetype(date : datetime.date | datetime.datetime, ref : object) -> datetime.datetime | datetime.date:
     result = date
+
     # Additional check for instance of datetime is necessary
     # to avoid treating a datetime as date.
     if isinstance(ref, datetime.datetime):
-        if ref.tzinfo is None or ref.tzinfo.utcoffset(ref) is None:
-            result = result.replace(tzinfo=None)
-        pass
+
+        if isinstance(result, datetime.datetime):
+            if ref.tzinfo is None or ref.tzinfo.utcoffset(ref) is None:
+                result = result.replace(tzinfo=None)
+
+        elif isinstance(result, datetime.date):
+            result = datetime.datetime.combine(
+                result,
+                datetime.datetime.min.time(),
+                ref.tzinfo
+            )
+
     elif isinstance(ref, datetime.date):
-        result = result.date()
-    elif isinstance(ref, datetime.time):
-        result = result.time()
+        if isinstance(result, datetime.datetime):
+            result = result.date()
+
     return result
 
-def decode_date_formula(base_date : datetime, formula : str) -> datetime:
+def decode_date_formula(base_date : datetime.datetime | datetime.date, formula : str) -> datetime.datetime | datetime.date:
     units = ["days",
              "weeks",
              "months",
@@ -185,7 +206,6 @@ def decode_relative_date(date : str, config : Configuration) -> datetime.date | 
 
     return result
 
-
 def decode_date(date : str, config : Configuration) -> datetime.date | datetime.datetime:
 
     if len(date) == 0:
@@ -208,10 +228,10 @@ def decode_date(date : str, config : Configuration) -> datetime.date | datetime.
 
     return decode_relative_date(date, config)
 
-synonyms = {
+synonyms : Dict[str, Union[datetime.date, datetime.datetime]] = {
     "now" : datetime.datetime.now(),
     "today" : today_as_date(),
-    "tomorrow" : tomorrow_as_date,
+    "tomorrow" : tomorrow_as_date(),
     "monday" : (tomorrow_as_date() + relativedelta(weekday=calendar.MONDAY)),
     "tuesday" : (tomorrow_as_date() + relativedelta(weekday=calendar.TUESDAY)),
     "wednesday" : (tomorrow_as_date() + relativedelta(weekday=calendar.WEDNESDAY)),

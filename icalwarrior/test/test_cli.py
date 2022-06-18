@@ -8,31 +8,7 @@ from icalwarrior.cli import run_cli
 from icalwarrior.calendars import Calendars
 from icalwarrior.configuration import Configuration
 import icalwarrior.constants as constants
-
-def setup_dummy_calendars(calendars):
-    # Create temporary directory for calendars
-    tmp_dir = TemporaryDirectory()
-    tmp_dir_path = os.path.join(gettempdir(), tmp_dir.name)
-
-    for cal in calendars:
-        os.mkdir(os.path.join(tmp_dir_path, cal))
-
-    # Create temporary config file
-    config_file = NamedTemporaryFile(delete=False)
-    config_file_path = os.path.join(gettempdir(), config_file.name)
-
-    config_file.write(("calendars: " + tmp_dir.name + "\n").encode("utf-8"))
-    config_file.write(("info_columns: uid,summary,created,categories,description\n").encode("utf-8"))
-    config_file.close()
-
-    return (tmp_dir, config_file_path)
-
-def remove_dummy_calendars(tmp_dir, config_file_path):
-    # Delete temporary config file
-    os.remove(config_file_path)
-
-    # Delete temporary directory
-    tmp_dir.cleanup()
+from icalwarrior.test.util import setup_dummy_calendars, remove_dummy_calendars
 
 def test_calendars():
     # Create temporary directory for calendars
@@ -58,21 +34,22 @@ def test_adding():
     runner = CliRunner()
 
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask", "+testcat", "due:today+3d", "dtstart:today+1d"])
+    print(result.output)
     assert result.exit_code == 0
 
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
-    assert 'summary' in todos[0]
-    assert str(todos[0]['summary']) == "Testtask"
-    assert 'categories' in todos[0]
-    assert str(todos[0]['categories'].cats[0]) == "testcat"
-    assert 'due' in todos[0]
-    assert 'dtstart' in todos[0]
-    assert 'created' in todos[0]
-    assert 'uid' in todos[0]
-    assert 'status' in todos[0]
-    assert str(todos[0]['status']).lower() == "needs-action"
+    assert todos[0].has_property('summary')
+    assert todos[0].get_string('summary') == "Testtask"
+    assert todos[0].has_property('categories')
+    assert todos[0].get_categories()[0] == "testcat"
+    assert todos[0].has_property('due')
+    assert todos[0].has_property('dtstart')
+    assert todos[0].has_property('created')
+    assert todos[0].has_property('uid')
+    assert todos[0].has_property('status')
+    assert todos[0].get_string('status').lower() == "needs-action"
 
     # Test failure if given calendar name prefix is ambiguous
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "te", "Testtask 2"])
@@ -115,10 +92,10 @@ def test_categories_modification():
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
-    assert 'categories' in todos[0]
-    assert len(todos[0]['categories'].cats) == 2
-    assert str(todos[0]['categories'].cats[0]) == "test1"
-    assert str(todos[0]['categories'].cats[1]) == "test2"
+    assert todos[0].has_property("categories")
+    assert len(todos[0].get_categories()) == 2
+    assert str(todos[0].get_categories()[0]) == "test1"
+    assert str(todos[0].get_categories()[1]) == "test2"
 
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "mod", "1", "--", constants.CATEGORY_EXCLUDE_PREFIX + "test1"])
     assert result.exit_code == 0
@@ -126,9 +103,9 @@ def test_categories_modification():
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
-    assert 'categories' in todos[0]
-    assert len(todos[0]['categories'].cats) == 1
-    assert str(todos[0]['categories'].cats[0]) == "test2"
+    assert todos[0].has_property("categories")
+    assert len(todos[0].get_categories()) == 1
+    assert str(todos[0].get_categories()[0]) == "test2"
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 
@@ -147,8 +124,8 @@ def test_property_removal():
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
-    assert 'categories' not in todos[0]
-    assert 'due' in todos[0]
+    assert not todos[0].has_property("categories")
+    assert todos[0].has_property('due')
 
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "mod", "1", "due:"])
     assert result.exit_code == 0
@@ -156,7 +133,7 @@ def test_property_removal():
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
-    assert 'due' not in todos[0]
+    assert not todos[0].has_property('due')
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 
@@ -171,18 +148,19 @@ def test_done():
     config = Configuration(config_file_path)
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
-    assert 'status' in todos[0]
-    assert str(todos[0]['status']).lower() == 'needs-action'
+    assert todos[0].has_property('status')
+    assert todos[0].get_string('status').lower() == 'needs-action'
 
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "done", "1"])
+    print(result.output)
     assert result.exit_code == 0
 
     cal_db = Calendars(config)
     todos = cal_db.get_todos()
-    assert 'status' in todos[0]
-    assert str(todos[0]['status']).lower() == 'completed'
-    assert icalendar.prop.vInt.from_ical(todos[0]['percent-complete']) == 100
-    assert 'completed' in todos[0]
+    assert todos[0].has_property('status')
+    assert todos[0].get_string('status').lower() == 'completed'
+    assert todos[0].get_int('percent-complete') == 100
+    assert todos[0].has_property('completed')
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 

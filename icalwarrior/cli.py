@@ -4,7 +4,7 @@ import os
 import subprocess
 from tempfile import NamedTemporaryFile, gettempdir
 
-from typing import List
+from typing import List, cast, Optional
 
 import json
 import click
@@ -14,8 +14,9 @@ import datetime
 from termcolor import colored
 from icalwarrior.configuration import Configuration, UnknownConfigurationOptionError
 from icalwarrior.calendars import Calendars
-from icalwarrior.todo import Todo
+from icalwarrior.todo import TodoPropertyHandler
 from icalwarrior.util import expand_prefix, decode_date
+from icalwarrior.args import decode_raw_arg_list
 from icalwarrior.view.formatter import StringFormatter
 from icalwarrior.view.tagger import DueDateBasedTagger
 from icalwarrior.view.tabular import TabularToDoListView, TabularPrinter, TabularToDoView
@@ -27,12 +28,12 @@ class InvalidArgumentException(Exception):
         self.arg_name = arg_name
         self.supported = supported
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ("Unknown property '" + self.arg_name + "'. Supported properties are " + ",".join(self.supported))
 
 class CommandAliases(click.Group):
 
-    def get_command(self,ctx,cmd_name):
+    def get_command(self, ctx: click.Context, cmd_name: str) -> Optional[click.Command]:
         rv = click.Group.get_command(self, ctx, cmd_name)
         if rv is not None:
             return rv
@@ -41,8 +42,9 @@ class CommandAliases(click.Group):
         if cmd != "":
             return click.Group.get_command(self, ctx, cmd)
         fail(ctx,'Invalid command "%s"' % cmd_name)
+        return None
 
-def fail(ctx, msg : str) -> None:
+def fail(ctx: click.Context, msg : str) -> None:
     ctx.fail(colored(msg, 'red'))
 
 def success(msg : str) -> None:
@@ -54,7 +56,7 @@ def hint(msg : str) -> None:
 @click.command(cls=CommandAliases)
 @click.option('-c', '--config', default=Configuration.get_default_config_path(), help='Path to the configuration file')
 @click.pass_context
-def run_cli(ctx, config):
+def run_cli(ctx: click.Context, config: str) -> None:
 
     colorama.init()
 
@@ -68,21 +70,25 @@ def run_cli(ctx, config):
     except PermissionError:
         fail(ctx, "Missing permissions to open configuration file " + config)
 
+# Type cast needed to tell mypy that run_cli is actually
+# an instance of CommandAliases. Otherwise, it will infer
+# it to be of type Command, which is a subclass of CommandAliases.
+run_cli = cast(CommandAliases, run_cli)
 
 @run_cli.command()
 @click.pass_context
-def calendars(ctx):
+def calendars(ctx: click.Context) -> None:
     cal = Calendars(ctx.obj['config'])
 
     cols = ["Name", "Path", "Total number of todos", "Number of completed todos"]
-    rows = []
+    rows : List[List[str]] = []
 
     cal_db = Calendars(ctx.obj['config'])
     for name in cal.get_calendars():
         path = os.path.join(ctx.obj['config'].get_calendar_dir(), name)
         todos = cal_db.get_todos(["cal:" + name])
         completed_todos = cal_db.get_todos(["cal:" + name, "and", "status:completed"])
-        rows.append([name, path, len(todos), len(completed_todos)])
+        rows.append([name, path, str(len(todos)), str(len(completed_todos))])
 
     printer = TabularPrinter(rows, cols, 0, tableformatter.WrapMode.WRAP, None)
     printer.print()
@@ -92,7 +98,7 @@ def calendars(ctx):
 @click.argument('calendar', nargs=1, required=True)
 @click.argument('summary', nargs=1, required=True)
 @click.argument('properties', nargs=-1)
-def add(ctx, calendar, summary, properties):
+def add(ctx: click.Context, calendar: str, summary: str, properties: List[str]) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -104,24 +110,26 @@ def add(ctx, calendar, summary, properties):
 
     todo = None
     try:
-        todo = Todo.create(cal_db.get_unused_uid())
-        Todo.set_properties(todo, ctx.obj['config'], ['summary:' + summary, 'status:needs-action'] + [p for p in properties])
-        cal_db.write_todo(calendar_name, todo)
+        todo = TodoPropertyHandler(ctx.obj['config'], cal_db.create_todo())
+        property_dict = decode_raw_arg_list(ctx.obj['config'], ['summary:' + summary, 'status:needs-action'] + [p for p in properties])
+        todo.set_properties(property_dict)
+        cal_db.write_todo(calendar_name, todo.get_ical_todo())
     except Exception as err:
         fail(ctx, str(err))
 
+    assert todo is not None
     # Re-read calendars to trigger id generation of todo
-    uid = todo['uid']
+    uid = todo.get_string('uid')
     cal_db = Calendars(ctx.obj['config'])
     todo = cal_db.get_todos(["uid:" + uid])[0]
 
-    success("Successfully created new todo \"" + todo['summary'] + "\" with ID " + str(todo["context"]["id"]) + ".")
+    success("Successfully created new todo \"" + todo.get_string('summary') + "\" with ID " + str(todo.get_context()["id"]) + ".")
 
 @run_cli.command()
 @click.pass_context
 @click.argument('identifier', nargs=1, type=int)
 @click.argument('properties',nargs=-1)
-def modify(ctx, identifier, properties):
+def modify(ctx: click.Context, identifier: int, properties: List[str]) ->  None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -130,16 +138,18 @@ def modify(ctx, identifier, properties):
     todos = cal_db.get_todos(["id:"+str(identifier)])
 
     if len(todos) == 0:
-        fail(ctx,"Invalid identifier " + identifier + ".")
+        fail(ctx,"Invalid identifier " + str(identifier) + ".")
 
     todo = todos[0]
     try:
-        Todo.set_properties(todo, ctx.obj['config'], properties)
 
-        cal_name = todo['context']['calendar']
-        todo_id = str(todo['context']['id'])
+        property_changes = decode_raw_arg_list(ctx.obj['config'], properties)
+        todo.set_properties(property_changes)
 
-        cal_db.write_todo(cal_name, todo)
+        cal_name = str(todo.get_context()['calendar'])
+        todo_id = str(todo.get_context()['id'])
+
+        cal_db.write_todo(cal_name, todo.get_ical_todo())
     except Exception as err:
         fail(ctx,str(err))
     success("Successfully modified todo " + todo_id + ".")
@@ -148,7 +158,7 @@ def modify(ctx, identifier, properties):
 @click.pass_context
 @click.argument('report',nargs=1,default="default")
 @click.argument('constraints',nargs=-1)
-def show(ctx, report, constraints):
+def show(ctx: click.Context, report: str, constraints: List[str]) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -190,7 +200,7 @@ def show(ctx, report, constraints):
 @run_cli.command()
 @click.pass_context
 @click.argument('ids',nargs=-1,required=True)
-def done(ctx, ids):
+def done(ctx: click.Context, ids: List[str]) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -208,9 +218,12 @@ def done(ctx, ids):
 
     try:
         for todo in pending_todos:
-            Todo.set_properties(todo, ctx.obj['config'], ['status:COMPLETED', 'percent-complete:100', 'completed:now'])
-            todo_id = todo['context']['id']
-            cal_db.write_todo(todo['context']['calendar'], todo)
+            todo.set_properties({
+                'status': 'COMPLETED', 
+                'percent-complete': 100, 
+                'completed': datetime.datetime.now()})
+            todo_id = todo.get_context()['id']
+            cal_db.write_todo(str(todo.get_context()['calendar']), todo.get_ical_todo())
             success("Set status of todo " + str(todo_id) + " to COMPLETED.")
     except Exception as err:
         fail(ctx, str(err))
@@ -219,13 +232,13 @@ def done(ctx, ids):
 @run_cli.command()
 @click.pass_context
 @click.argument('ids',nargs=-1,required=True)
-def delete(ctx, ids):
+def delete(ctx: click.Context, ids: List[str]) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
         fail(ctx,"No calendars found. Please check your configuration.")
 
-    constraints = []
+    constraints : List[str] = []
     for idnum in ids:
 
         if len(constraints) != 0:
@@ -242,18 +255,18 @@ def delete(ctx, ids):
 
     for todo in todos:
         try:
-            if click.confirm('Delete todo ' + str(todo['context']['id']) + ' "' + str(todo['summary']) + '"?'):
-                cal_db.delete_todo(todo)
-                success("Successfully deleted todo " + str(todo['context']['id']))
+            if click.confirm('Delete todo ' + str(todo.get_context()['id']) + ' "' + todo.get_string('summary') + '"?'):
+                cal_db.delete_todo(todo.get_ical_todo())
+                success("Successfully deleted todo " + str(todo.get_context()['id']))
         except Exception as err:
             fail(ctx,str(err))
 
 @run_cli.command()
 @click.pass_context
 @click.argument('identifier',type=int,required=True)
-@click.argument('source',type=str,required=True)
-@click.argument('destination',type=str,required=True)
-def move(ctx, identifier, source, destination):
+@click.argument('source',required=True)
+@click.argument('destination',required=True)
+def move(ctx: click.Context, identifier: int, source: str, destination: str) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
 
@@ -271,10 +284,10 @@ def move(ctx, identifier, source, destination):
         fail(ctx,str(err))
 
     if len(todos) == 0:
-        fail(ctx,"No todo with identifier " + identifier + " has been found.")
+        fail(ctx,"No todo with identifier " + str(identifier) + " has been found.")
 
     try:
-        cal_db.move_todo(todos[0]['uid'], source, destination)
+        cal_db.move_todo(todos[0].get_string('uid'), source, destination)
     except Exception as err:
         fail(ctx,str(err))
     success("Successfully moved todo to calendar " + destination)
@@ -282,7 +295,7 @@ def move(ctx, identifier, source, destination):
 @run_cli.command()
 @click.pass_context
 @click.argument('identifier',nargs=1,required=True, type=int)
-def info(ctx, identifier):
+def info(ctx: click.Context, identifier: int) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -303,7 +316,7 @@ def info(ctx, identifier):
 @run_cli.command()
 @click.pass_context
 @click.argument('identifier',nargs=1,required=True, type=int)
-def description(ctx, identifier):
+def description(ctx: click.Context, identifier: int) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -327,8 +340,8 @@ def description(ctx, identifier):
     tmp_file_path = os.path.join(gettempdir(), tmp_file.name)
 
     # If the todo has a description already, write it into the text file
-    if 'description' in todo:
-        tmp_file.write(str(todo['description']).encode('utf-8'))
+    if todo.has_property("description"):
+        tmp_file.write(todo.get_string('description').encode('utf-8'))
 
     tmp_file.close()
 
@@ -340,16 +353,16 @@ def description(ctx, identifier):
     subprocess.call([default_editor, tmp_file_path])
 
     if click.confirm('Shall the new description be used?'):
-        tmp_file = open(tmp_file_path, 'r')
-        new_desc = tmp_file.read()
-        tmp_file.close()
+        desc_file = open(tmp_file_path, 'r')
+        new_desc = str(desc_file.read())
+        desc_file.close()
 
-        if 'description' in todo:
-            del todo['description']
+        if todo.has_property("description"):
+            todo.unset_property("description")
 
-        todo['description'] = new_desc
-        cal_name = todo['context']['calendar']
-        cal_db.write_todo(cal_name, todo)
+        todo.set_properties({'description' : new_desc})
+        cal_name = str(todo.get_context()['calendar'])
+        cal_db.write_todo(cal_name, todo.get_ical_todo())
         success("Successfully updated description.")
 
     os.remove(tmp_file_path)
@@ -357,7 +370,7 @@ def description(ctx, identifier):
 @run_cli.command()
 @click.pass_context
 @click.argument('expr',nargs=1,required=True)
-def calculate(ctx, expr):
+def calculate(ctx: click.Context, expr: str) -> None:
     try:
         result = decode_date(expr, ctx.obj['config'])
     except Exception as err:
@@ -367,8 +380,8 @@ def calculate(ctx, expr):
 
 @run_cli.command()
 @click.pass_context
-@click.argument('calendar',type=str,required=True)
-def cleanup(ctx, calendar):
+@click.argument('calendar',required=True)
+def cleanup(ctx: click.Context, calendar: str) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if calendar not in cal_db.get_calendars():
@@ -385,10 +398,10 @@ def cleanup(ctx, calendar):
         if click.confirm('Delete ' + str(len(todos)) + ' completed todos from calendar ' + calendar +'?'):
             for todo in todos:
                 try:
-                    cal_db.delete_todo(todo)
+                    cal_db.delete_todo(todo.get_ical_todo())
                 except Exception as err:
                     fail(ctx,str(err))
-                success("Successfully deleted todo " + str(todo['context']['id']))
+                success("Successfully deleted todo " + str(todo.get_context()['id']))
 
         else:
             hint("No todos deleted from " + calendar + ".")
@@ -396,7 +409,7 @@ def cleanup(ctx, calendar):
 @run_cli.command()
 @click.pass_context
 @click.argument('constraints',nargs=-1)
-def export(ctx, constraints):
+def export(ctx: click.Context, constraints: List[str]) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -413,7 +426,7 @@ def export(ctx, constraints):
 
     for todo in todos:
         obj = {}
-        for prop_name in todo:
+        for prop_name in todo.get_property_names():
             obj[prop_name] = formatter.format_property_value(prop_name, todo)
 
         objects.append(obj)

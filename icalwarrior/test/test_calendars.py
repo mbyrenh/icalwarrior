@@ -1,36 +1,9 @@
 import pytest
-import os
-import os.path
 
-from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
 from icalwarrior.calendars import Calendars, InvalidFilterExpressionError
-from icalwarrior.todo import Todo
+from icalwarrior.todo import TodoPropertyHandler
 from icalwarrior.configuration import Configuration
-
-def setup_dummy_calendars(calendars):
-    # Create temporary directory for calendars
-    tmp_dir = TemporaryDirectory()
-    tmp_dir_path = os.path.join(gettempdir(), tmp_dir.name)
-
-    for cal in calendars:
-        os.mkdir(os.path.join(tmp_dir_path, cal))
-
-    # Create temporary config file
-    config_file = NamedTemporaryFile(delete=False)
-    config_file_path = os.path.join(gettempdir(), config_file.name)
-
-    config_file.write(("calendars: " + tmp_dir.name + "\n").encode("utf-8"))
-    config_file.write(("info_columns: uid,summary,created,categories,description\n").encode("utf-8"))
-    config_file.close()
-
-    return (tmp_dir, config_file_path)
-
-def remove_dummy_calendars(tmp_dir, config_file_path):
-    # Delete temporary config file
-    os.remove(config_file_path)
-
-    # Delete temporary directory
-    tmp_dir.cleanup()
+from icalwarrior.test.util import setup_dummy_calendars, remove_dummy_calendars
 
 def test_get_todo_and_autoinsertion():
 
@@ -39,21 +12,29 @@ def test_get_todo_and_autoinsertion():
     config = Configuration(config_file_path)
     cal_db = Calendars(config)
 
-    todo = Todo.create(cal_db.get_unused_uid())
-    Todo.set_properties(todo, config, ['summary:test_wrong', 'status:needs-action'])
-    cal_db.write_todo("test", todo)
+    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo.set_properties({
+        'summary': 'test_wrong',
+        'status': 'needs-action'})
+    cal_db.write_todo("test", todo.get_ical_todo())
 
     # Re-create Calendars instance to trigger reading of newly created todos
     cal_db = Calendars(config)
-    todo = Todo.create(cal_db.get_unused_uid())
-    Todo.set_properties(todo, config, ['summary:test_wrong', 'status:needs-action', "+right"])
-    cal_db.write_todo("test", todo)
+    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo.set_properties({
+        'summary': 'test_wrong',
+        'status': 'needs-action',
+        'categories': ['+right']})
+    cal_db.write_todo("test", todo.get_ical_todo())
 
     # Re-create Calendars instance to trigger reading of newly created todos
     cal_db = Calendars(config)
-    todo = Todo.create(cal_db.get_unused_uid())
-    Todo.set_properties(todo, config, ['summary:test_right', 'status:needs-action', "+right"])
-    cal_db.write_todo("test", todo)
+    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo.set_properties({
+        'summary': 'test_right',
+        'status': 'needs-action',
+        'categories': ['+right']})
+    cal_db.write_todo("test", todo.get_ical_todo())
 
     # Re-create Calendars instance to trigger reading of newly created todos
     cal_db = Calendars(config)
@@ -72,17 +53,25 @@ def test_get_todo_logic_operators():
     config = Configuration(config_file_path)
     cal_db = Calendars(config)
 
-    todo = Todo.create(cal_db.get_unused_uid())
-    Todo.set_properties(todo, config, ['summary:test_wrong', 'status:needs-action'])
-    cal_db.write_todo("test", todo)
+    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo.set_properties({
+        'summary': 'test_wrong',
+        'status': 'needs-action'})
+    cal_db.write_todo("test", todo.get_ical_todo())
 
-    todo = Todo.create(cal_db.get_unused_uid())
-    Todo.set_properties(todo, config, ['summary:test_wrong', 'status:needs-action', "+right"])
-    cal_db.write_todo("test", todo)
+    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo.set_properties({
+        'summary': 'test_wrong',
+        'status': 'needs-action',
+        'categories': ["+right"]})
+    cal_db.write_todo("test", todo.get_ical_todo())
 
-    todo = Todo.create(cal_db.get_unused_uid())
-    Todo.set_properties(todo, config, ['summary:test_right', 'status:needs-action', "+right"])
-    cal_db.write_todo("test", todo)
+    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo.set_properties({
+        'summary': 'test_right',
+        'status': 'needs-action',
+        'categories': ["+right"]})
+    cal_db.write_todo("test", todo.get_ical_todo())
 
     # Re-create Calendars instance to trigger reading of newly created todos
     cal_db = Calendars(config)
@@ -107,9 +96,10 @@ def test_default_values_for_properties():
     config = Configuration(config_file_path)
     cal_db = Calendars(config)
 
-    todo = Todo.create(cal_db.get_unused_uid())
-    Todo.set_properties(todo, config, ['summary:test_wrong'])
-    cal_db.write_todo("test", todo)
+    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo.set_properties(
+        {'summary': 'test_wrong'})
+    cal_db.write_todo("test", todo.get_ical_todo())
 
     cal_db = Calendars(config)
     todos = cal_db.get_todos(["status:needs-action"])

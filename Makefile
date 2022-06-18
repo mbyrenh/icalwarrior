@@ -5,7 +5,7 @@ htmldoc:
 	sphinx-build -b html doc/source doc/build/html
 
 mypy:
-	MYPYPATH=stubs mypy icalwarrior/*.py
+	MYPYPATH=stubs mypy --python-executable venv/bin/python --exclude icalwarrior/test --exclude icalwarrior/perf --strict icalwarrior/
 
 lint:
 	flake8 icalwarrior/*.py

@@ -1,16 +1,16 @@
-from typing import List, Set, Union, Tuple, Callable
+from typing import List, Set, Union, Callable, Optional, Dict
 import tableformatter
 from colorama import init, Fore, Back, Style
 import icalendar
 
 from icalwarrior.view.formatter import StringFormatter
 from icalwarrior.view.tagger import Tagger
-from icalwarrior.todo import Todo
+from icalwarrior.todo import TodoPropertyHandler
 from icalwarrior.configuration import Configuration
 
 class ReportGrid(tableformatter.Grid):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.show_header = True
         self.border_top = False
@@ -76,8 +76,8 @@ class InvalidReportError(Exception):
         self.report_name = report_name
         self.error_msg = error_msg
 
-    def __str__(self):
-        return ("Invalid report \"" + self.report_name + "\": " + error_msg)
+    def __str__(self) -> str:
+        return ("Invalid report \"" + self.report_name + "\": " + self.error_msg)
 
 class TabularPrinter:
 
@@ -86,7 +86,7 @@ class TabularPrinter:
                  columns : List[str],
                  max_column_width : int,
                  wrap_mode : tableformatter.WrapMode,
-                 row_tagger : Callable) -> None:
+                 row_tagger : Optional[Callable[[List[str]], Dict[str,int]]]) -> None:
         self.columns = columns
         self.max_column_width = max_column_width
         self.wrap_mode = wrap_mode
@@ -119,7 +119,7 @@ class TabularToDoListView:
         self,
         config : Configuration,
         report_name : str,
-        todos : List[Todo],
+        todos : List[TodoPropertyHandler],
         property_formatter : StringFormatter,
         row_tagger : Tagger) -> None:
 
@@ -134,7 +134,7 @@ class TabularToDoListView:
         report_config = self.config.get_config(['reports', self.report_name])
 
         if "columns" not in report_config:
-            raise InvalidReportError(self.report_name, "No colums specified for report.")
+            raise InvalidReportError(self.report_name, "No columns specified for report.")
 
         columns = ["id"] + report_config['columns'].split(",")
 
@@ -167,7 +167,7 @@ class TabularToDoListView:
 
 class TabularToDoView:
 
-    def __init__(self, config : Configuration, todo : icalendar.Todo, formatter : StringFormatter) -> None:
+    def __init__(self, config : Configuration, todo : TodoPropertyHandler, formatter : StringFormatter) -> None:
         self.config = config
         self.todo = todo
         self.formatter = formatter
@@ -181,7 +181,7 @@ class TabularToDoView:
         rows = []
         for prop in property_order:
 
-            if prop in self.todo:
+            if self.todo.has_property(prop):
 
                 rows.append(
                     [

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any
 from pathlib import Path
 import yaml
 
@@ -24,7 +24,7 @@ class Configuration:
     def get_default_config_path() -> str:
         return str(Path.home()) + "/.config/ical/config.yaml"
 
-    def get_config(self, option_path : List[str]) -> object:
+    def get_config(self, option_path : List[str]) -> Any:
         option = self.config
 
         try:
@@ -35,12 +35,16 @@ class Configuration:
 
         return option
 
-    def get_calendar_dir(self) -> List[str]:
-        """Returns a list of paths containing calendar directories."""
+    def get_calendar_dir(self) -> str:
+        """Returns the path to a directory containing calendar directories."""
 
         result = []
         if 'calendars' in self.config:
             result = self.config['calendars']
+
+        if not isinstance(result, str):
+            raise Exception("Non-string type returned for 'calendars' configuration value.")
+
         return result
 
     def get_datetime_format(self) -> str:

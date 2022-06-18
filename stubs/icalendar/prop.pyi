@@ -1,13 +1,18 @@
-from typing import List, Union,Tuple
+from typing import List, Union, Tuple, Any
 from datetime import datetime, date, time, timedelta
 class vText:
-    pass
+    @classmethod
+    def from_ical(cls, ical : str) -> int: ...
 
 class vCategory:
-    cats : List[vText]
+    cats : List[str]
+
+    @staticmethod
+    def from_ical(ical : str) -> List[str]: ...
 
 class vInt:
-    pass
+    @classmethod
+    def from_ical(cls, ical: str) -> int: ...
 
 class vDuration:
     pass
@@ -25,5 +30,11 @@ class vTime:
     pass
 
 class vDDDTypes:
+
+    def __init__(self, dt : object): ...
+
     @classmethod
-    def from_ical(cls, ical : object, timezone : object) -> Union[datetime,date,timedelta,time,Tuple[Union[date,datetime]],vDuration,vPeriod,vDatetime,vDate,vTime]: ...
+    def from_ical(cls, ical : object, timezone : object = None) -> Union[datetime,date,timedelta,time,Tuple[Union[date,datetime]],vDuration,vPeriod,vDatetime,vDate,vTime]: ...
+
+class TypesFactory:
+    def for_property(self, name : str) -> Any: ...

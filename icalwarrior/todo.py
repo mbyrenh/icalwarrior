@@ -1,22 +1,11 @@
-from typing import List
-from datetime import datetime
-import icalendar
+from typing import List, Union, Dict
+import datetime
 import dateutil.tz as tz
+import icalendar
 
-from icalwarrior.args import arg_type, ArgType
-from icalwarrior.util import decode_date, expand_prefix
+from icalwarrior.util import decode_date, expand_prefix, adapt_datetype
 from icalwarrior.configuration import Configuration
 import icalwarrior.constants as constants
-
-class InvalidEnumValueError(Exception):
-
-    def __init__(self, prop : str, given : str, supported : List[str]) -> None:
-        self.prop = prop
-        self.given = given
-        self.supported = supported
-
-    def __str__(self) -> str:
-        return "Invalid value \"" + self.given + "\" for property \"" + self.prop + "\". Supported values are " + ", ".join(self.supported)
 
 class UnknownPropertyError(Exception):
     def __init__(self, prop : str, supported : List[str]) -> None:
@@ -26,7 +15,7 @@ class UnknownPropertyError(Exception):
     def __str__(self) -> str:
         return "Unknown property \"" + self.prop + "\". Supported properties are " + ", ".join(self.supported)
 
-class Todo:
+class TodoPropertyHandler:
 
     DATE_PROPERTIES = [
         'due',
@@ -73,51 +62,20 @@ class Todo:
 
     @staticmethod
     def supported_properties() -> List[str]:
-        return Todo.DATE_PROPERTIES + Todo.TEXT_PROPERTIES + Todo.ENUM_PROPERTIES + Todo.INT_PROPERTIES
+        return TodoPropertyHandler.DATE_PROPERTIES + TodoPropertyHandler.TEXT_PROPERTIES + TodoPropertyHandler.ENUM_PROPERTIES + TodoPropertyHandler.INT_PROPERTIES
 
     @staticmethod
     def supported_filter_properties() -> List[str]:
-        return Todo.DATE_PROPERTIES + Todo.TEXT_PROPERTIES + Todo.ENUM_PROPERTIES + Todo.INT_PROPERTIES + Todo.TEXT_FILTER_PROPERTIES + Todo.INT_FILTER_PROPERTIES
+        return TodoPropertyHandler.DATE_PROPERTIES + TodoPropertyHandler.TEXT_PROPERTIES + TodoPropertyHandler.ENUM_PROPERTIES + TodoPropertyHandler.INT_PROPERTIES + TodoPropertyHandler.TEXT_FILTER_PROPERTIES + TodoPropertyHandler.INT_FILTER_PROPERTIES
 
-    @staticmethod
-    def create(uid : str) -> icalendar.Todo:
-        todo = icalendar.Todo()
+    def __init__(self, configuration : Configuration, todo : icalendar.Todo):
+        self.todo = todo
 
-        todo.add('uid', uid)
-        now = datetime.now(tz.gettz())
-        todo.add('dtstamp', now, encode=True)
-        todo.add('created', now, encode=True)
-
-        return todo
-
-    @staticmethod
-    def parse_property(config : Configuration, prop_name : str, raw_value : str) -> object:
-
-        result = None
-        if prop_name in Todo.DATE_PROPERTIES:
-            result = decode_date(raw_value, config)
-
-        elif prop_name in Todo.TEXT_PROPERTIES:
-            result = raw_value
-
-        elif prop_name in Todo.INT_PROPERTIES:
-            # To check if the value is actually an int, try converting
-            result = str(int(raw_value))
-
-        elif prop_name in Todo.ENUM_PROPERTIES:
-
-            if raw_value.lower() in Todo.ENUM_VALUES[prop_name]:
-                    result = raw_value
-            else:
-                raise InvalidEnumValueError(prop_name, raw_value, Todo.ENUM_VALUES[prop_name])
-        else:
-            raise UnknownPropertyError(prop_name, Todo.supported_properties())
-
-
+    def get_property_names(self) -> List[str]:
+        result = [k for k in list(self.todo.keys()) if k.lower() != "context"]
         return result
 
-    @staticmethod
-    def set_properties(todo : icalendar.Todo, config : Configuration, raw_properties : List[str]) -> None:
+    def set_properties(self, property_dict : Dict[str, Union[str, int, datetime.datetime, datetime.date, List[str]]]) -> None:
         # Collect categories in list and add it once to the todo
         # as otherwise, icalendar will add a separate CATEGORIES-line
         # for each category.
@@ -125,54 +83,110 @@ class Todo:
 
         categories = []
         # Make sure we consider existing categories
-        if 'categories' in todo:
-            categories = [str(c) for c in todo['categories'].cats]
+        if self.has_property('categories'):
 
-        for arg in raw_properties:
-            argtype = arg_type(arg, Todo.supported_properties())
+            existing_categories = self.get_categories()
+            categories = [str(c) for c in existing_categories]
 
-            if argtype == ArgType.CATEGORY:
+        for prop_name, prop_value in property_dict.items():
 
-                if arg[0] == constants.CATEGORY_INCLUDE_PREFIX:
-                    categories.append(arg[1:])
-                elif arg[0] == constants.CATEGORY_EXCLUDE_PREFIX:
-                    categories.remove(arg[1:])
+            if prop_name == "categories":
+                assert isinstance(prop_value, list)
+                assert all(isinstance(x, str) for x in prop_value)
+                for cat in prop_value:
+                    if cat[0] == constants.CATEGORY_INCLUDE_PREFIX:
+                        categories.append(cat[1:])
+                    elif cat[0] == constants.CATEGORY_EXCLUDE_PREFIX:
+                        categories.remove(cat[1:])
 
-            elif argtype == ArgType.PROPERTY:
+            else:
 
-                col_pos = arg.find(':')
-                arg_name = arg[0:col_pos]
-                arg_raw_value = arg[col_pos+1:]
-
-                arg_name_full = expand_prefix(arg_name, Todo.supported_properties())
-
-                if arg_name_full.upper() in icalendar.Todo.singletons and arg_name_full in todo:
-                    del todo[arg_name_full]
+                if prop_name.upper() in icalendar.Todo.singletons and prop_name in self.todo:
+                    del self.todo[prop_name]
 
                 # If the value is an empty string,
                 # we just delete it.
-                if arg_raw_value != "":
-                    arg_value = Todo.parse_property(config, arg_name_full, arg_raw_value)
-                    todo.add(arg_name_full, arg_value, encode=True)
+                if prop_value != "":
+                    self.todo.add(prop_name, prop_value, encode=True)
 
                 modified = True
 
-            elif argtype == ArgType.STRING:
+        if 'categories' in self.todo:
+            del self.todo['categories']
 
-                del todo['summary']
-                todo.add('summary', arg)
-                modified = True
-
-        if 'categories' in todo:
-            del todo['categories']
         if len(categories) > 0:
-            todo.add("categories", categories)
+            self.todo.add("categories", categories)
             modified = True
 
         if modified:
-            if 'last-modified' in todo:
-                del todo['last-modified']
-            todo.add('last-modified', datetime.now(tz.gettz()))
+            self.__update_modification_timestamps()
 
-            del todo['dtstamp']
-            todo.add('dtstamp', datetime.now(tz.gettz()))
+    def __update_modification_timestamps(self) -> None:
+        if 'last-modified' in self.todo:
+            del self.todo['last-modified']
+        self.todo.add('last-modified', datetime.datetime.now(tz.gettz()))
+
+        del self.todo['dtstamp']
+        self.todo.add('dtstamp', datetime.datetime.now(tz.gettz()))
+
+    def get_ical_todo(self) -> icalendar.Todo:
+        return self.todo
+
+    def get_context(self) -> Dict[str, Union[str, int]]:
+
+        result = self.todo["context"]
+        if isinstance(result, dict):
+            return result
+
+        raise Exception("Object of non-dict type " + type(result).__name__ + " given.")
+
+    def get_datetime(self, prop_name : str) -> datetime.datetime:
+
+        result = icalendar.prop.vDDDTypes.from_ical(self.todo[prop_name])
+        if isinstance(result, (datetime.datetime, datetime.date)):
+            result = adapt_datetype(result, icalendar.prop.vDDDTypes(datetime.datetime.now()))
+            # Additional check for datetime.datetime instance to make mypy happy
+            if isinstance(result, datetime.datetime):
+                return result
+
+        raise Exception("Object of non-datetime type " + type(result).__name__ + " given.")
+
+    def get_date_or_datetime(self, prop_name : str) -> datetime.datetime | datetime.date:
+
+        result = icalendar.prop.vDDDTypes.from_ical(self.todo[prop_name])
+        if isinstance(result, (datetime.datetime, datetime.date)):
+            return result
+
+        raise Exception("Object of non-datetime  or date type " + type(result).__name__ + " given.")
+
+    def get_categories(self) -> List[str]:
+
+        categories = self.todo['categories']
+        if isinstance(categories, icalendar.prop.vCategory):
+            result = categories.cats
+            if isinstance(result, list) and (len(result) == 0 or isinstance(result[0], str)):
+                return result
+
+        raise Exception("Object of non-list type " + type(result).__name__ + " given.")
+
+    def get_int(self, prop_name : str) -> int:
+
+        result = icalendar.prop.vInt.from_ical(self.todo[prop_name])
+        if isinstance(result, int):
+            return result
+
+        raise Exception("Object of non-int type " + type(result).__name__ + " given.")
+
+    def get_string(self, prop_name : str) -> str:
+
+        result = icalendar.prop.vText.from_ical(self.todo[prop_name])
+        if isinstance(result, str):
+            return result
+
+        raise Exception("Object of non-string type " + type(result).__name__ + " given.")
+
+    def has_property(self, prop_name : str) -> bool:
+        return prop_name in self.todo
+
+    def unset_property(self, prop_name : str) -> None:
+        del self.todo[prop_name]

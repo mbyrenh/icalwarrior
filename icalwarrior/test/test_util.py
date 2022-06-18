@@ -5,7 +5,7 @@ import pytest
 
 from icalwarrior.util import decode_date, InvalidDateFormatError, InvalidDateFormulaError, synonyms 
 from icalwarrior.configuration import Configuration
-from icalwarrior.constants import RELATIVE_DATE_TIME_SEPARATOR
+from icalwarrior.constants import RELATIVE_DATE_TIME_SEPARATOR, RELATIVE_DATE_TIME_FORMAT
 
 class DummyConfiguration:
 
@@ -16,6 +16,9 @@ class DummyConfiguration:
     def get_datetime_format(self) -> str:
         result = self.datetimeformat
         return result
+
+    def get_time_format_for_relative_dates(self) -> str:
+        return RELATIVE_DATE_TIME_FORMAT
 
 def today_as_date() -> datetime.date:
     return datetime.date.today()
