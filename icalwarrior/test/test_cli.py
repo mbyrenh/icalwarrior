@@ -288,7 +288,7 @@ def test_move():
     todos = cal_db.get_todos(["calendar:test2"])
     assert len(todos) == 0
 
-    result = runner.invoke(run_cli, ["-c", str(config_file_path), "move", "1", "test1", "test2"])
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "move", "1", "test2"])
     assert result.exit_code == 0
 
     cal_db = Calendars(config)

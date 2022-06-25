@@ -271,14 +271,10 @@ def delete(ctx: click.Context, ids: List[str]) -> None:
 @run_cli.command(short_help="Move a todo item from one calendar to another.")
 @click.pass_context
 @click.argument('identifier',type=int,required=True)
-@click.argument('source',required=True)
 @click.argument('destination',required=True)
-def move(ctx: click.Context, identifier: int, source: str, destination: str) -> None:
+def move(ctx: click.Context, identifier: int, destination: str) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
-
-    if source not in cal_db.get_calendars():
-        fail(ctx,"Unknown calendar \"" + source +"\".")
 
     if destination not in cal_db.get_calendars():
         fail(ctx,"Unknown calendar \"" + destination +"\".")
@@ -294,6 +290,7 @@ def move(ctx: click.Context, identifier: int, source: str, destination: str) -> 
         fail(ctx,"No todo with identifier " + str(identifier) + " has been found.")
 
     try:
+        source = todos[0].get_context()['calendar']
         cal_db.move_todo(todos[0].get_string('uid'), source, destination)
     except Exception as err:
         fail(ctx,str(err))
