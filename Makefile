@@ -23,5 +23,12 @@ test:
 	mkdir -p out/coverage
 	coverage html -d out/coverage
 
-.PHONY: install test mypy lint htmldoc
+clean:
+	rm -rf build
+	rm -rf out
+	rm -rf icalwarrior.egg-info
+	rm -rf .mypy_cache
+	rm -rf .pytest_cache
+	rm -rf .coverage
+
 .PHONY: install test mypy lint htmldoc reuse
