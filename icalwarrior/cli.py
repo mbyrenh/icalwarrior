@@ -79,7 +79,7 @@ def run_cli(ctx: click.Context, config: str) -> None:
 # it to be of type Command, which is a subclass of CommandAliases.
 run_cli = cast(CommandAliases, run_cli)
 
-@run_cli.command()
+@run_cli.command(short_help="Show summary statistics about the calendars icalwarrior is aware of.")
 @click.pass_context
 def calendars(ctx: click.Context) -> None:
     cal = Calendars(ctx.obj['config'])
@@ -97,7 +97,7 @@ def calendars(ctx: click.Context) -> None:
     printer = TabularPrinter(rows, cols, 0, tableformatter.WrapMode.WRAP, None)
     printer.print()
 
-@run_cli.command()
+@run_cli.command(short_help="Add a new todo item to a calendar.")
 @click.pass_context
 @click.argument('calendar', nargs=1, required=True)
 @click.argument('summary', nargs=1, required=True)
@@ -132,7 +132,7 @@ def add(ctx: click.Context, calendar: str, summary: str, properties: List[str]) 
 
     success("Successfully created new todo \"" + todo.get_string('summary') + "\" with ID " + str(todo.get_context()["id"]) + ".")
 
-@run_cli.command()
+@run_cli.command(short_help="Modify an existing todo item.")
 @click.pass_context
 @click.argument('identifier', nargs=1, type=int)
 @click.argument('properties',nargs=-1)
@@ -161,7 +161,7 @@ def modify(ctx: click.Context, identifier: int, properties: List[str]) ->  None:
         fail(ctx,str(err))
     success("Successfully modified todo " + todo_id + ".")
 
-@run_cli.command()
+@run_cli.command(short_help="Print a given report defined in the configuration file.")
 @click.pass_context
 @click.argument('report',nargs=1,default="default")
 @click.argument('constraints',nargs=-1)
@@ -204,7 +204,7 @@ def show(ctx: click.Context, report: str, constraints: List[str]) -> None:
     except Exception as err:
         fail(ctx,str(err))
 
-@run_cli.command()
+@run_cli.command(short_help="Mark one or more todo items as done.")
 @click.pass_context
 @click.argument('ids',nargs=-1,required=True)
 def done(ctx: click.Context, ids: List[str]) -> None:
@@ -236,7 +236,7 @@ def done(ctx: click.Context, ids: List[str]) -> None:
         fail(ctx, str(err))
 
 
-@run_cli.command()
+@run_cli.command(short_help="Delete a todo item.")
 @click.pass_context
 @click.argument('ids',nargs=-1,required=True)
 def delete(ctx: click.Context, ids: List[str]) -> None:
@@ -268,7 +268,7 @@ def delete(ctx: click.Context, ids: List[str]) -> None:
         except Exception as err:
             fail(ctx,str(err))
 
-@run_cli.command()
+@run_cli.command(short_help="Move a todo item from one calendar to another.")
 @click.pass_context
 @click.argument('identifier',type=int,required=True)
 @click.argument('source',required=True)
@@ -299,7 +299,7 @@ def move(ctx: click.Context, identifier: int, source: str, destination: str) -> 
         fail(ctx,str(err))
     success("Successfully moved todo to calendar " + destination)
 
-@run_cli.command()
+@run_cli.command(short_help="Print a summary of a single todo item.")
 @click.pass_context
 @click.argument('identifier',nargs=1,required=True, type=int)
 def info(ctx: click.Context, identifier: int) -> None:
@@ -320,7 +320,7 @@ def info(ctx: click.Context, identifier: int) -> None:
     todoView = TabularToDoView(ctx.obj['config'], todos[0], formatter)
     todoView.show()
 
-@run_cli.command()
+@run_cli.command(short_help="Change the description text of a todo item.")
 @click.pass_context
 @click.argument('identifier',nargs=1,required=True, type=int)
 def description(ctx: click.Context, identifier: int) -> None:
@@ -339,20 +339,17 @@ def description(ctx: click.Context, identifier: int) -> None:
 
     todo = todos[0]
 
-    # Create temporary text file
     # Set delete to False, so that we can close
     # the file without it being deleted and then re-open it
     # with a text editor.
     tmp_file = NamedTemporaryFile(delete=False)
     tmp_file_path = os.path.join(gettempdir(), tmp_file.name)
 
-    # If the todo has a description already, write it into the text file
     if todo.has_property("description"):
         tmp_file.write(todo.get_string('description').encode('utf-8'))
 
     tmp_file.close()
 
-    # Open the text file using the system editor
     default_editor = os.getenv('EDITOR')
     if default_editor is None:
         default_editor = "xdg-open"
@@ -374,7 +371,7 @@ def description(ctx: click.Context, identifier: int) -> None:
 
     os.remove(tmp_file_path)
 
-@run_cli.command()
+@run_cli.command(short_help="Perform date calculations.")
 @click.pass_context
 @click.argument('expr',nargs=1,required=True)
 def calculate(ctx: click.Context, expr: str) -> None:
@@ -385,7 +382,7 @@ def calculate(ctx: click.Context, expr: str) -> None:
     print(result.strftime(ctx.obj['config'].get_datetime_format()))
 
 
-@run_cli.command()
+@run_cli.command(short_help="Delete all completed todo items in a given calendar.")
 @click.pass_context
 @click.argument('calendar',required=True)
 def cleanup(ctx: click.Context, calendar: str) -> None:
@@ -413,7 +410,7 @@ def cleanup(ctx: click.Context, calendar: str) -> None:
         else:
             hint("No todos deleted from " + calendar + ".")
 
-@run_cli.command()
+@run_cli.command(short_help="Print a JSON representation of all todos satisfying a given filter expression.")
 @click.pass_context
 @click.argument('constraints',nargs=-1)
 def export(ctx: click.Context, constraints: List[str]) -> None:
