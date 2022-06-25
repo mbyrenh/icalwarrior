@@ -15,6 +15,7 @@ setup(
 
     install_requires=[
         'mypy',
+        'lxml',
         'click',
         'icalendar',
         'tableformatter',
