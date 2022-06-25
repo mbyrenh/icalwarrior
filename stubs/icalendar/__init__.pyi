@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 from typing import Any, Union, Tuple, List, Dict, Optional
 from collections import OrderedDict
 from icalendar.prop import vText, vInt, vCategory, vDDDTypes

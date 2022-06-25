@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 from typing import List, Union, Tuple, Any
 from datetime import datetime, date, time, timedelta
 class vText:

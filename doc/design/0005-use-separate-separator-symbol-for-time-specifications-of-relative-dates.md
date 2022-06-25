@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # 5. Use separate separator symbol for time specifications of relative dates
 
 Date: 2022-06-11

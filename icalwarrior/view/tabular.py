@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 from typing import List, Set, Union, Callable, Optional, Dict
 import tableformatter
 from colorama import init, Fore, Back, Style

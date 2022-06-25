@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # 2. Enumerate ToDo items anew each time the program is called
 
 Date: 2022-06-11

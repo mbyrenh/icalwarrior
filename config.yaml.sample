@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # The calendars option specifies the path to where the different ical calendars holding 
 # tasks are stored, where each calendar is represented by a separate directory.
 # For example, if you would like to have todo lists "ProjectA", "ProjectB", "home", which are

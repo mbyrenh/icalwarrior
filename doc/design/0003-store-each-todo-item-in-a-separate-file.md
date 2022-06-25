@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # 3. Store each todo item in a separate file
 
 Date: 2022-06-11

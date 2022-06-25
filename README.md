@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # Icalwarrior
 
 Icalwarrior is a CLI task manager that uses the ical format for tasks, similar to [Todoman](https://github.com/pimutils/todoman). At the same time, Icalwarrior's command line interface is similar to the one from [Taskwarrior](https://taskwarrior.org/). As a consequence, Icalwarrior lets you work with your tasks with similar efficiency as Taskwarrior does while at the same time lets you profit from the many applications supporting ical-based task management. For example, you can synchronize your tasks with [Nextcloud](nextcloud.com) or [Radicale](https://radicale.org/) and manage your tasks on Android using [OpenTasks](https://opentasks.app/) or [Tasks.org](https://tasks.org/).

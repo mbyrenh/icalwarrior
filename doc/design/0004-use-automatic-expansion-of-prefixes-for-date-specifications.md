@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Martin Byrenheid <martin@byrenheid.net>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # 4. Use automatic expansion of prefixes for date specifications
 
 Date: 2022-06-11
