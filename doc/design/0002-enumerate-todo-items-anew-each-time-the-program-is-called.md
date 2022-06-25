@@ -16,7 +16,7 @@ Affected by [3. Store each todo item in a separate file](0003-store-each-todo-it
 
 ## Context
 
-To make it easy to modify or delete existing ToDo items, it is desirable to have a short numeric identifier for every item. Icalendar items only have rather long, alphanumeric identifiers which are unsuitable for quick addressing of todo items by the user. 
+To make it easy to modify or delete existing todo items, it is desirable to have a short numeric identifier for every item. Icalendar items typically have rather long, alphanumeric identifiers (e.g., `14385d37-1961-43db-94fd-01aba568c8d8` or `140259242703240749`) which are unsuitable for quick addressing of todo items by the user. 
 
 ## Decision
 
