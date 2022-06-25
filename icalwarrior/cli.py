@@ -112,6 +112,9 @@ def add(ctx: click.Context, calendar: str, summary: str, properties: List[str]) 
     if calendar_name == "":
         fail(ctx, "Unknown calendar \"" + calendar + ". Known calendars are " + ", ".join(cal_db.get_calendars()) + ".")
 
+    if len(summary) == 0:
+        fail(ctx, "Summary text must be non-empty.")
+
     todo = None
     try:
         todo = TodoPropertyHandler(ctx.obj['config'], cal_db.create_todo())

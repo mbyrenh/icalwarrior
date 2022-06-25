@@ -92,6 +92,11 @@ def decode_raw_arg_list(config : Configuration, raw_properties : List[str]) -> D
 
         elif argtype == ArgType.STRING:
 
+            # Ensure that we do not write an empty
+            # summary.
+            if len(arg) == 0:
+                raise Exception("Summary text must be non-empty.")
+
             result['summary'] = arg
 
         if len(categories) > 0:
