@@ -10,3 +10,5 @@ out
 build
 .buildinfo
 .doctrees
+dist
+icalwarrior.egg-info
