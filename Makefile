@@ -9,7 +9,8 @@ htmldoc:
 	sphinx-build -b html doc/source doc/build/html
 
 mypy:
-	MYPYPATH=stubs mypy --python-executable venv/bin/python --exclude icalwarrior/test --exclude icalwarrior/perf --strict icalwarrior/
+	mkdir -p out/mypy
+	MYPYPATH=stubs mypy --html-report out/mypy --exclude icalwarrior/test --exclude icalwarrior/perf --strict icalwarrior/
 
 lint:
 	flake8 icalwarrior/*.py
