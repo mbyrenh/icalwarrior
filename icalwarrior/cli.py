@@ -25,6 +25,7 @@ from icalwarrior.view.formatter import StringFormatter
 from icalwarrior.view.tagger import DueDateBasedTagger
 from icalwarrior.view.tabular import TabularToDoListView, TabularPrinter, TabularToDoView
 from icalwarrior.view.sorter import ToDoSorter
+from icalwarrior.filter import Constraint
 
 class InvalidArgumentException(Exception):
 
@@ -57,7 +58,7 @@ def success(msg : str) -> None:
 def hint(msg : str) -> None:
     click.echo(colored(msg, 'yellow'))
 
-@click.command(cls=CommandAliases)
+@click.group(cls=CommandAliases)
 @click.option('-c', '--config', default=Configuration.get_default_config_path(), help='Path to the configuration file')
 @click.pass_context
 def run_cli(ctx: click.Context, config: str) -> None:
@@ -73,11 +74,6 @@ def run_cli(ctx: click.Context, config: str) -> None:
         fail(ctx, "Unable to find configuration file " + config)
     except PermissionError:
         fail(ctx, "Missing permissions to open configuration file " + config)
-
-# Type cast needed to tell mypy that run_cli is actually
-# an instance of CommandAliases. Otherwise, it will infer
-# it to be of type Command, which is a subclass of CommandAliases.
-run_cli = cast(CommandAliases, run_cli)
 
 @run_cli.command(short_help="Show summary statistics about the calendars icalwarrior is aware of.")
 @click.pass_context
@@ -163,9 +159,9 @@ def modify(ctx: click.Context, identifier: int, properties: List[str]) ->  None:
 
 @run_cli.command(short_help="Print a given report defined in the configuration file.")
 @click.pass_context
-@click.argument('report',nargs=1,default="default")
+@click.argument('name',nargs=1,default="default")
 @click.argument('constraints',nargs=-1)
-def show(ctx: click.Context, report: str, constraints: List[str]) -> None:
+def report(ctx: click.Context, name: str, constraints: List[str]) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -176,10 +172,10 @@ def show(ctx: click.Context, report: str, constraints: List[str]) -> None:
     # and constraints
     reports = ctx.obj['config'].get_config(['reports'])
 
-    report_expanded = expand_prefix(report, reports.keys())
+    report_expanded = expand_prefix(name, reports.keys())
 
     if report_expanded == "":
-        ctx.fail("Unknown or ambiguous report name \"" + report + "\". Known reports are " + ", ".join(reports.keys()) + ".")
+        ctx.fail("Unknown or ambiguous report name \"" + name + "\". Known reports are " + ", ".join(reports.keys()) + ".")
 
     if 'constraint' in reports[report_expanded]:
         if len(constraints) > 0:
@@ -290,7 +286,7 @@ def move(ctx: click.Context, identifier: int, destination: str) -> None:
         fail(ctx,"No todo with identifier " + str(identifier) + " has been found.")
 
     try:
-        source = todos[0].get_context()['calendar']
+        source = str(todos[0].get_context()['calendar'])
         cal_db.move_todo(todos[0].get_string('uid'), source, destination)
     except Exception as err:
         fail(ctx,str(err))
@@ -299,7 +295,7 @@ def move(ctx: click.Context, identifier: int, destination: str) -> None:
 @run_cli.command(short_help="Print a summary of a single todo item.")
 @click.pass_context
 @click.argument('identifier',nargs=1,required=True, type=int)
-def info(ctx: click.Context, identifier: int) -> None:
+def show(ctx: click.Context, identifier: int) -> None:
 
     cal_db = Calendars(ctx.obj['config'])
     if len(cal_db.get_calendars()) == 0:
@@ -433,3 +429,39 @@ def export(ctx: click.Context, constraints: List[str]) -> None:
         objects.append(obj)
 
     click.echo(json.dumps(objects))
+
+@run_cli.group(short_help="Show further information about specific aspects of icalwarrior.", cls=CommandAliases)
+def info() -> None:
+    pass
+
+@info.command(short_help="Shows properties that can be set using the 'add' or 'modify' command.")
+def properties() -> None:
+    columns = ["Property", "Allowed values"]
+    rows = []
+    for prop in TodoPropertyHandler.supported_properties():
+        if prop in TodoPropertyHandler.DATE_PROPERTIES:
+            rows += [[prop, "Any date"]]
+        elif prop in TodoPropertyHandler.TEXT_PROPERTIES:
+            rows += [[prop, "Any text"]]
+        elif prop in TodoPropertyHandler.INT_PROPERTIES:
+            rows += [[prop, "Any integer"]]
+        elif prop in TodoPropertyHandler.ENUM_PROPERTIES:
+            rows += [[prop, ", ".join(TodoPropertyHandler.ENUM_VALUES[prop])]]
+
+    output = TabularPrinter(rows, columns, 0, tableformatter.WrapMode.WRAP, None)
+    output.print()
+
+@info.command(short_help="Shows properties together with the corresponding operators that can be used for filtering.")
+def filter() -> None:
+    columns = ["Property", "Supported filter operators"]
+    rows = []
+    for prop in TodoPropertyHandler.supported_filter_properties():
+        if prop in TodoPropertyHandler.DATE_PROPERTIES:
+            rows += [[prop, ", ".join(Constraint.DATE_OPERATORS.keys())]]
+        elif prop in TodoPropertyHandler.TEXT_PROPERTIES or prop in TodoPropertyHandler.TEXT_FILTER_PROPERTIES or prop in TodoPropertyHandler.ENUM_PROPERTIES:
+            rows += [[prop, ", ".join(Constraint.TEXT_OPERATORS.keys())]]
+        elif prop in TodoPropertyHandler.INT_PROPERTIES or prop in TodoPropertyHandler.INT_FILTER_PROPERTIES:
+            rows += [[prop, ", ".join(Constraint.INT_OPERATORS.keys())]]
+
+    output = TabularPrinter(rows, columns, 0, tableformatter.WrapMode.WRAP, None)
+    output.print()

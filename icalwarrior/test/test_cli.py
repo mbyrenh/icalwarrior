@@ -80,7 +80,7 @@ def test_add_empty_summary():
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 
-def test_info():
+def test_show():
 
     tmp_dir, config_file_path = setup_dummy_calendars(["test"])
 
@@ -89,7 +89,7 @@ def test_info():
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask", "+testcat"])
     assert result.exit_code == 0
 
-    result = runner.invoke(run_cli, ["-c", str(config_file_path), "info", "1"])
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "show", "1"])
 
     assert "Testtask" in result.output
     assert "testcat" in result.output
