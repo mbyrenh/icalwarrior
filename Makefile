@@ -10,7 +10,7 @@ htmldoc:
 
 mypy:
 	mkdir -p out/mypy
-	MYPYPATH=stubs mypy --html-report out/mypy --exclude icalwarrior/test --exclude icalwarrior/perf --strict icalwarrior/
+	MYPYPATH=stubs mypy --html-report out/mypy --strict src/icalwarrior/
 
 lint:
 	flake8 icalwarrior/*.py
@@ -18,8 +18,8 @@ lint:
 reuse:
 	reuse lint
 
-test:
-	coverage run --source icalwarrior -m pytest icalwarrior/test
+test: install
+	coverage run --source src -m pytest -vv test
 	mkdir -p out/coverage
 	coverage html -d out/coverage
 
