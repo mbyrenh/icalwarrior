@@ -4,7 +4,7 @@
 
 import pytest
 
-from icalwarrior.model.lists import TodoDatabase
+from icalwarrior.model.lists import TodoDatabase, TodoDatabaseAccessError
 from icalwarrior.model.items import TodoModel
 from icalwarrior.configuration import Configuration
 from icalwarrior.filtering.constraints import InvalidFilterExpressionError
@@ -124,6 +124,6 @@ def test_nonexistent_lists_dir():
 
     config = Configuration(config_file_path)
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(TodoDatabaseAccessError):
         cal_db = TodoDatabase(config)
 

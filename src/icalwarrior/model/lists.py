@@ -5,6 +5,7 @@
 from typing import List, Dict, Optional
 import os
 import os.path
+from shutil import rmtree
 import uuid
 import datetime
 import dateutil.tz as tz
@@ -26,6 +27,22 @@ class DuplicateCalendarNameError(Exception):
 
     def __str__(self) -> str:
         return ("Duplicate name '" + self.calendarName + "' found in " + self.firstCalDir + " and " + self.secondCalDir)
+
+class TodoDatabaseAccessError(Exception):
+
+    def __init__(self, path : str) -> None:
+        self.path = path
+
+    def __str__(self) -> str:
+        return "Error during access of todo lists dir " + self.path + ". Does the directory actually exist?"
+
+class InvalidTodolistError(Exception):
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+    def __str__(self) -> str:
+        return "Invalid todo list dir " + self.path + "."
 
 class ListNotFoundError(Exception):
 
@@ -99,31 +116,37 @@ class TodoDatabase:
 
     def __read_todo_lists(self) -> Dict[str, TodoList]:
 
-        result : Dict[str, TodoList] = {}
-        list_names = os.listdir(self.config.get_lists_dir())
-        todo_id = 1
-        for current_list in list_names:
+        try:
+            result : Dict[str, TodoList] = {}
+            list_names = os.listdir(self.config.get_lists_dir())
+            todo_id = 1
+            for current_list in list_names:
 
-            todo_files = os.listdir(os.path.join(self.config.get_lists_dir(), current_list))
-            todo_list : List[TodoModel] = []
+                todo_files = os.listdir(os.path.join(self.config.get_lists_dir(), current_list))
+                todo_list : List[TodoModel] = []
 
-            for todo_file in todo_files:
-                ical_file = open(os.path.join(self.config.get_lists_dir(), current_list, todo_file), 'r')
-                calendar = icalendar.Calendar.from_ical(ical_file.read())
+                for todo_file in todo_files:
+                    ical_file = open(os.path.join(self.config.get_lists_dir(), current_list, todo_file), 'r')
+                    calendar = icalendar.Calendar.from_ical(ical_file.read())
 
-                for todo in calendar.walk('vtodo'):
+                    for todo in calendar.walk('vtodo'):
 
-                    wrapped_todo = TodoModel(self.config, todo)
-                    # Add context information to be used for filtering etc.
-                    wrapped_todo.set_context('list', current_list)
-                    wrapped_todo.set_context('id', todo_id)
-                    todo_id += 1
+                        wrapped_todo = TodoModel(self.config, todo)
+                        # Add context information to be used for filtering etc.
+                        wrapped_todo.set_context('list', current_list)
+                        wrapped_todo.set_context('id', todo_id)
+                        todo_id += 1
 
-                    todo_list.append(wrapped_todo)
+                        todo_list.append(wrapped_todo)
 
-                ical_file.close()
+                    ical_file.close()
 
-            result[current_list] = TodoList(self.config, current_list, todo_list)
+                result[current_list] = TodoList(self.config, current_list, todo_list)
+
+        except FileNotFoundError as err:
+            raise TodoDatabaseAccessError(self.config.get_lists_dir()) from err
+        except OSError as err:
+            raise TodoDatabaseAccessError(self.config.get_lists_dir()) from err
 
         return result
 
@@ -132,6 +155,22 @@ class TodoDatabase:
 
     def get_list_names(self) -> List[str]:
         return list(self.lists.keys())
+
+    def add_list(self, name : str) -> None:
+
+        list_path = os.path.join(self.config.get_lists_dir(), name)
+        if not os.path.exists(list_path):
+            os.mkdir(list_path)
+        else:
+            raise InvalidTodolistError(list_path)
+
+    def delete_list(self, name: str) -> None:
+
+        list_path = os.path.join(self.config.get_lists_dir(), name)
+        if os.path.exists(list_path):
+            rmtree(list_path)
+        else:
+            raise InvalidTodolistError(list_path)
 
     def get_list(self, name : str) -> TodoList:
 
