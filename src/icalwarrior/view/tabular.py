@@ -177,7 +177,7 @@ class TabularToDoView:
 
     def show(self) -> None:
 
-        property_order = self.config.get_config(['info_columns']).split(",")
+        property_order = self.config.get_config(['show_columns']).split(",")
 
         cols = ["Property", "Value"]
 

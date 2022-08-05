@@ -13,7 +13,9 @@ lists_dir:
 datetime_format: "%Y-%m-%dT%H:%M:%S"
 date_format: "%Y-%m-%d"
 
-info_columns: summary,created,due,uid,status,categories,list,description
+# The 'show_columns' option determines which properties are shown when 
+# the 'show' command is used to display a summary of a particular todo item.
+show_columns: summary,created,due,uid,status,categories,list,description
 
 #
 # The following lines contain some example reports that use different filtering criteria.
