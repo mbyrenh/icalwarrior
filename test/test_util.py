@@ -7,7 +7,7 @@ from dateutil.relativedelta import *
 import dateutil.tz as tz
 import pytest
 
-from icalwarrior.input.date import decode_date, InvalidDateFormatError, InvalidDateFormulaError, synonyms
+from icalwarrior.input.date import decode_date, InvalidDateFormatError, InvalidDateFormulaError, DATE_SYNONYMS
 from icalwarrior.constants import RELATIVE_DATE_TIME_SEPARATOR, RELATIVE_DATE_TIME_FORMAT
 
 class DummyConfiguration:
@@ -99,7 +99,7 @@ def test_relative_date_not_same_day():
     today = decode_date(datestr, config)
 
     # For each weekday, make sure it never returns today
-    for day, day_date in synonyms.items():
+    for day, day_date in DATE_SYNONYMS.items():
 
         if day != "today":
             assert day_date != today

@@ -18,7 +18,7 @@ from termcolor import colored
 from icalwarrior.configuration import Configuration
 from icalwarrior.model.items import TodoModel
 from icalwarrior.model.lists import TodoDatabase
-from icalwarrior.input.date import expand_prefix, decode_date
+from icalwarrior.input.date import expand_prefix, decode_date, DATE_SYNONYMS, DATE_FORMULA_UNITS
 from icalwarrior.input.cli import decode_property_list
 from icalwarrior.view.formatter import StringFormatter
 from icalwarrior.view.tagger import DueDateBasedTagger
@@ -531,3 +531,17 @@ def filter() -> None:
 
     output = TabularPrinter(rows, columns, 0, tableformatter.WrapMode.WRAP, None)
     output.print()
+
+@info.command(short_help="Shows relative date specifications and calculation units")
+def dates() -> None:
+
+    columns = ["Type", "Supported values"]
+    rows = [["Relative date specificiations", ", ".join(DATE_SYNONYMS)],
+            ["Date calculation units", ", ".join(DATE_FORMULA_UNITS)]]
+
+    output = TabularPrinter(rows, columns, 0, tableformatter.WrapMode.WRAP, None)
+    output.print()
+
+@info.command(short_help="Shows information related to defining reports")
+def reports() -> None:
+    pass

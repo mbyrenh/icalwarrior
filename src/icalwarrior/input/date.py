@@ -117,10 +117,6 @@ def adapt_datetype(date : datetime.date | datetime.datetime, ref : object) -> da
     return result
 
 def decode_date_formula(base_date : datetime.datetime | datetime.date, formula : str) -> datetime.datetime | datetime.date:
-    units = ["days",
-             "weeks",
-             "months",
-             "years"]
 
     result = base_date
     buf = ""
@@ -154,9 +150,9 @@ def decode_date_formula(base_date : datetime.datetime | datetime.date, formula :
             buf += formula[i]
             i += 1
 
-        unit = expand_prefix(buf, units)
+        unit = expand_prefix(buf, DATE_FORMULA_UNITS)
         if unit == "":
-            raise InvalidDateFormulaError("Invalid unit or ambiguous prefix \"" + buf + "\". Supported units are " + ",".join(units))
+            raise InvalidDateFormulaError("Invalid unit or ambiguous prefix \"" + buf + "\". Supported units are " + ",".join(DATE_FORMULA_UNITS))
 
         if op == "+":
             result = add_units(result, unit, num)
@@ -174,14 +170,14 @@ def decode_relative_date(date : str, config : Configuration) -> datetime.date | 
         buf += date[i]
         i += 1
 
-    synonym = expand_prefix(buf, synonyms.keys())
+    synonym = expand_prefix(buf, DATE_SYNONYMS.keys())
     if synonym == "":
         raise InvalidDateFormatError(
             config.get_date_format(),
             config.get_datetime_format(),
-            synonyms.keys())
+            DATE_SYNONYMS.keys())
 
-    result : datetime.date | datetime.datetime = synonyms[synonym]
+    result : datetime.date | datetime.datetime = DATE_SYNONYMS[synonym]
 
     # Now, check if a time is given as well
     # Assumes that configured date format uses zero-padded numbers
@@ -201,7 +197,7 @@ def decode_relative_date(date : str, config : Configuration) -> datetime.date | 
             raise InvalidDateFormatError(
                 config.get_date_format(),
                 config.get_datetime_format(),
-                synonyms.keys())
+                DATE_SYNONYMS.keys())
 
     # Check if there is an additional offset
     if len(date) > i:
@@ -212,7 +208,7 @@ def decode_relative_date(date : str, config : Configuration) -> datetime.date | 
 def decode_date(date : str, config : Configuration) -> datetime.date | datetime.datetime:
 
     if len(date) == 0:
-        raise InvalidDateFormatError(config.get_date_format(), config.get_datetime_format(), synonyms.keys())
+        raise InvalidDateFormatError(config.get_date_format(), config.get_datetime_format(), DATE_SYNONYMS.keys())
 
     read_date = None
     try:
@@ -231,7 +227,12 @@ def decode_date(date : str, config : Configuration) -> datetime.date | datetime.
 
     return decode_relative_date(date, config)
 
-synonyms : Dict[str, Union[datetime.date, datetime.datetime]] = {
+DATE_FORMULA_UNITS = ["days",
+         "weeks",
+         "months",
+         "years"]
+
+DATE_SYNONYMS : Dict[str, Union[datetime.date, datetime.datetime]] = {
     "now" : datetime.datetime.now(),
     "today" : today_as_date(),
     "tomorrow" : tomorrow_as_date(),
