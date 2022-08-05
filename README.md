@@ -27,8 +27,6 @@ A sample for such a configuration file can be found in this repository.
 Given that a valid configuration file is given, just run `todo` to see a list of available commands together with a descriptive text.
 To see the parameters expected by a given command `COM`, just run `todo COM`.
 
-### Working with todo lists. 
-
 Icalwarrior has been designed so that one can leverage tools like [vdirsyncer](https://github.com/pimutils/vdirsyncer) to synchronize todo items with a CalDAV server.
 As a consequence, Icalwarrior supports management of multiple todo lists, where each todo list is represented by a separate directory. 
 
@@ -41,6 +39,8 @@ For example, given that the `lists_dir` value in the configuration file is set t
 └── projectB
 ```
 where `home`, `party`, `projectA`, and `projectB` each represent a separate todo list in the form of a separate directory.
+
+### Unique prefix detection
 
 Similar to [Taskwarrior](https://taskwarrior.org/), Icalwarrior aims to minimize the typing overhead needed to do any modification to the todo list. To do so, Icalwarrior automatically detects commands, todo property names and todo lists as soon as a unique prefix is given.
 For example, given the above todo lists, consider the case thet a new todo item with the summary `Buy drinks and snacks` is to be added to the `party` todo list. Without leveraging prefix detection, one can do so by running
@@ -70,13 +70,19 @@ to add a todo which holds the names of the persons to be invited in the descript
 todo a pa "Send invitations" de:"Jim, Laura, Anna, Mark, Tom, Sandra"
 ```
 
+### Editing description text
+
 To furthermore enable writing and editing of description texts with multiple lines etc. in a text editor the `description` command can be used.
+
+### Assigning categories
 
 Another property for which specific functionality has been added are categories. While one may append `categories:catA,catB,catC` to a `todo add` or `todo modify` command to assign the categories `catA`, `catB` and `catC` to the todo item, this approach becomes cumbersome when one later on wants add another category to the same item or remove one. To support such cases, Icalwarrior interprets the `+` sign as prefix as indicator for addition of a category and `_` as indicator for removal of a category. For example, given that a todo with ID `1` exists to which the categories `catA` and `catB` have been assigned, one may run
 ```text
 todo mod 1 _catB +catC 
 ```
 to remove the assignment to category `catB` and add an assignment to category `catC`. While using a minus sign for the removal of a category assignment would be more intuitive, Icalwarrior currently uses underscore for technical reasons, as the minus sign is misinterpreted as a command line option.
+
+### Date specifications
 
 Another feature that Icalwarrior shares with Taskwarrior is that, additional to absolute date specifications, whose format is given by the `datetime_format` and `date_format` configuration file, Icalwarrior supports relative date specifications.
 For example, if one plans to go shopping groceries on the coming Friday, one may run
