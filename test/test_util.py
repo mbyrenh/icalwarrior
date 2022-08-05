@@ -7,8 +7,7 @@ from dateutil.relativedelta import *
 import dateutil.tz as tz
 import pytest
 
-from icalwarrior.util import decode_date, InvalidDateFormatError, InvalidDateFormulaError, synonyms 
-from icalwarrior.configuration import Configuration
+from icalwarrior.input.date import decode_date, InvalidDateFormatError, InvalidDateFormulaError, synonyms
 from icalwarrior.constants import RELATIVE_DATE_TIME_SEPARATOR, RELATIVE_DATE_TIME_FORMAT
 
 class DummyConfiguration:

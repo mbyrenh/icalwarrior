@@ -6,7 +6,7 @@ from typing import List
 
 import datetime
 import icalendar
-from icalwarrior.todo import TodoPropertyHandler
+from icalwarrior.model.items import TodoModel
 
 class UnsupportedSortKeyError(Exception):
 
@@ -18,11 +18,11 @@ class UnsupportedSortKeyError(Exception):
 
 class ToDoSorter:
 
-    def __init__(self, todos : List[TodoPropertyHandler], sort_key : str) -> None:
+    def __init__(self, todos : List[TodoModel], sort_key : str) -> None:
         self.todos = todos
         self.sort_key = sort_key
 
-    def date_to_timestamp(self, todo : TodoPropertyHandler, prop_name : str) -> float:
+    def date_to_timestamp(self, todo : TodoModel, prop_name : str) -> float:
         result = 0.0
         if todo.has_property(prop_name):
             date_val = todo.get_date_or_datetime(prop_name)
@@ -32,7 +32,7 @@ class ToDoSorter:
                 result = date_val.timestamp()
         return result
 
-    def get_sorted(self) -> List[TodoPropertyHandler]:
+    def get_sorted(self) -> List[TodoModel]:
 
         result = None
         # Determine type of sort element

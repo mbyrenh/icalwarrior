@@ -3,15 +3,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from typing import List
-import pytest
 
-from icalwarrior.todo import TodoPropertyHandler
-from icalwarrior.calendars import Calendars
+from icalwarrior.model.items import TodoModel
+from icalwarrior.model.lists import TodoDatabase
 from icalwarrior.view.tabular import TabularToDoView
 from icalwarrior.view.formatter import StringFormatter
 from icalwarrior.configuration import Configuration
 
-from icalwarrior.test.util import setup_dummy_calendars, remove_dummy_calendars
+from util import setup_dummy_calendars
+
 
 class DummyConfiguration:
 
@@ -54,15 +54,15 @@ def test_tabular_todo_view(capsys):
 
     tmp_dir, config_file_path = setup_dummy_calendars(["test"])
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
 
-    todo = TodoPropertyHandler(config, cal_db.create_todo())
+    todo = TodoModel(config, cal_db.create_todo())
     todo.set_properties({
         'summary': 'Test ToDo',
         'status': 'needs-action'})
     todo.get_ical_todo()['context'] = {}
-    todo.get_context()['calendar'] = 'test'
-    todo.get_context()['id'] = 1234
+    todo.set_context('list', 'test')
+    todo.set_context('id', 1234)
 
     formatter = StringFormatter(config)
     test_view = TabularToDoView(config, todo, formatter)

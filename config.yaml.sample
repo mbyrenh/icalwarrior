@@ -2,31 +2,37 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# The calendars option specifies the path to where the different ical calendars holding 
-# tasks are stored, where each calendar is represented by a separate directory.
+# The lists_dir option specifies the path to where the different ical todo lists holding 
+# tasks are stored, where each list is represented by a separate directory.
 # For example, if you would like to have todo lists "ProjectA", "ProjectB", "home", which are
 # stored under $HOME/.todos, then you can create the directories $HOME/.todos/ProjectA and so on
-# and set the "calendars" config value to "$HOME/.todos".
-# To check whether the calendars are detected succesfully, you can then call "todo calendars".
-calendars: 
+# and set the "lists_dir" config value to "$HOME/.todos".
+# To check whether the lists are detected succesfully, you can then call "todo lists".
+lists_dir: 
 
 datetime_format: "%Y-%m-%dT%H:%M:%S"
 date_format: "%Y-%m-%d"
 
-info_columns: summary,created,due,uid,status,categories,calendar,description
+info_columns: summary,created,due,uid,status,categories,list,description
 
+#
+# The following lines contain some example reports that use different filtering criteria.
+# To show a particular report with name NAME, one can call "todo report NAME". For example,
+# "todo report today" displays the report named "today" as defined below, which shows all todo items
+# whose "due" property corresponds to the current date.
+#
 reports:
   default:
-    columns: id,calendar,summary,categories,status,due
+    columns: id,list,summary,categories,status,due
     constraint: status.not_equals:completed 
     max_list_length: 30
     max_column_width: 50
   today:
-    columns: id,calendar,summary,due,categories
+    columns: id,list,summary,due,categories
     constraint: due:tod
     max_list_length: 30
   week:
-    columns: id,calendar,summary,due,categories
+    columns: id,list,summary,due,categories
     constraint: due.after:sun-1w and due.before:sun+1d
     max_list_length: 30
 

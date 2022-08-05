@@ -2,17 +2,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from typing import Tuple, List, Dict
+from typing import List, Dict
 from abc import abstractmethod
 
 from colorama import Fore
-import icalendar
 import datetime
 import dateutil.tz as tz
 import tableformatter
 
-from icalwarrior.util import adapt_datetype
-from icalwarrior.todo import TodoPropertyHandler
+from icalwarrior.input.date import adapt_datetype
+from icalwarrior.model.items import TodoModel
 
 class Tagger:
 
@@ -23,14 +22,13 @@ class Tagger:
 class DueDateBasedTagger(Tagger):
 
     def __init__(self,
-                 todos : List[TodoPropertyHandler],
+                 todos : List[TodoModel],
                  past_threshold : datetime.timedelta,
                  future_threshold : datetime.timedelta) -> None:
 
-        self.todos: Dict[str, TodoPropertyHandler] = {}
+        self.todos: Dict[str, TodoModel] = {}
         for todo in todos:
-            todo_context = todo.get_context()
-            self.todos[str(todo_context["id"])] = todo
+            self.todos[str(todo.get_context("id"))] = todo
 
         self.past_threshold = past_threshold
         self.future_threshold = future_threshold

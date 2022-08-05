@@ -18,7 +18,7 @@ def setup_dummy_calendars(calendars):
     config_file = NamedTemporaryFile(delete=False)
     config_file_path = os.path.join(gettempdir(), config_file.name)
 
-    config_file.write(("calendars: " + tmp_dir.name + "\n").encode("utf-8"))
+    config_file.write(("lists_dir: " + tmp_dir.name + "\n").encode("utf-8"))
     config_file.write(("info_columns: uid,summary,created,categories,description\n").encode("utf-8"))
     config_file.close()
 

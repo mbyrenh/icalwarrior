@@ -2,25 +2,23 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import os
-from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
 import datetime
 from dateutil.relativedelta import relativedelta
 from click.testing import CliRunner
-from icalwarrior.constants import RELATIVE_DATE_TIME_SEPARATOR
 from icalwarrior.cli import run_cli
-from icalwarrior.calendars import Calendars
-from icalwarrior.util import today_as_datetime
+from icalwarrior.model.lists import TodoDatabase
+from icalwarrior.input.date import today_as_datetime
 from icalwarrior.configuration import Configuration
+from icalwarrior.filtering.constraints import ConstraintEvaluator
 import icalwarrior.constants as constants
-from icalwarrior.test.util import setup_dummy_calendars, remove_dummy_calendars
+from util import setup_dummy_calendars, remove_dummy_calendars
 
-def test_calendars():
+def test_lists():
     # Create temporary directory for calendars
     tmp_dir, config_file_path = setup_dummy_calendars(['test1','test2','test3'])
 
     runner = CliRunner()
-    result = runner.invoke(run_cli, ["-c", config_file_path, "calendars"])
+    result = runner.invoke(run_cli, ["-c", config_file_path, "lists"])
     assert result.exit_code == 0
     assert result.output.find("test1") != -1
     assert result.output.find("test2") != -1
@@ -33,7 +31,7 @@ def test_adding():
     tmp_dir, config_file_path = setup_dummy_calendars(["test", "teft"])
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     assert len(cal_db.get_todos()) == 0
 
     runner = CliRunner()
@@ -42,7 +40,7 @@ def test_adding():
     print(result.output)
     assert result.exit_code == 0
 
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
     assert todos[0].has_property('summary')
@@ -62,7 +60,7 @@ def test_adding():
 
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "tef", "Testtask 2"])
     assert result.exit_code == 0
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 2
 
@@ -123,8 +121,8 @@ def test_due_absolute_date_with_time():
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Test", "due:"+due_date_str])
     assert result.exit_code == 0
 
-    cal_db = Calendars(config)
-    todos = cal_db.get_todos(["status:needs-action"])
+    cal_db = TodoDatabase(config)
+    todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["status:needs-action"]))
     assert todos[0].get_datetime("due") == due_date
 
     remove_dummy_calendars(tmp_dir, config_file_path)
@@ -136,18 +134,37 @@ def test_due_relative_date_with_time():
     expected_date_str = (today_as_datetime() + relativedelta(days=+1, hours=+13, minutes=+37)).strftime(config.get_datetime_format())
     expected_due_date = datetime.datetime.strptime(expected_date_str, config.get_datetime_format())
 
-    due_date_str = "tomorrow" + RELATIVE_DATE_TIME_SEPARATOR + "13:37"
+    due_date_str = "tomorrow" + constants.RELATIVE_DATE_TIME_SEPARATOR + "13:37"
     runner = CliRunner()
 
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Test", "due:"+due_date_str])
     assert result.exit_code == 0
 
-    cal_db = Calendars(config)
-    todos = cal_db.get_todos(["status:needs-action"])
+    cal_db = TodoDatabase(config)
+    todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["status:needs-action"]))
     assert todos[0].get_datetime("due") == expected_due_date
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 
+def test_categories_explicit_specification():
+
+    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+
+    runner = CliRunner()
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask", "categories:test1,test2"])
+    print(result.output)
+    assert result.exit_code == 0
+
+    config = Configuration(config_file_path)
+    cal_db = TodoDatabase(config)
+    todos = cal_db.get_todos()
+
+    print(result.output)
+    assert len(todos) == 1
+    assert todos[0].has_property("categories")
+    assert len(todos[0].get_categories()) == 2
+    assert str(todos[0].get_categories()[0]) == "test1"
+    assert str(todos[0].get_categories()[1]) == "test2"
 
 def test_categories_modification():
 
@@ -158,8 +175,9 @@ def test_categories_modification():
     assert result.exit_code == 0
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
+
     assert len(todos) == 1
     assert todos[0].has_property("categories")
     assert len(todos[0].get_categories()) == 2
@@ -169,7 +187,7 @@ def test_categories_modification():
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "mod", "1", "--", constants.CATEGORY_EXCLUDE_PREFIX + "test1"])
     assert result.exit_code == 0
 
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
     assert todos[0].has_property("categories")
@@ -190,7 +208,7 @@ def test_property_removal():
     assert result.exit_code == 0
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
     assert not todos[0].has_property("categories")
@@ -199,7 +217,7 @@ def test_property_removal():
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "mod", "1", "due:"])
     assert result.exit_code == 0
 
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
     assert not todos[0].has_property('due')
@@ -215,7 +233,7 @@ def test_done():
     assert result.exit_code == 0
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert todos[0].has_property('status')
     assert todos[0].get_string('status').lower() == 'needs-action'
@@ -224,7 +242,7 @@ def test_done():
     print(result.output)
     assert result.exit_code == 0
 
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert todos[0].has_property('status')
     assert todos[0].get_string('status').lower() == 'completed'
@@ -242,7 +260,7 @@ def test_deletion():
     assert result.exit_code == 0
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 1
 
@@ -250,7 +268,7 @@ def test_deletion():
     assert result.exit_code == 0
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 0
 
@@ -260,14 +278,14 @@ def test_deletion():
     assert result.exit_code == 0
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 2
 
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "del", "1", "2"],input="y\ny\n")
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
+    cal_db = TodoDatabase(config)
     todos = cal_db.get_todos()
     assert len(todos) == 0
 
@@ -282,20 +300,43 @@ def test_move():
     assert result.exit_code == 0
 
     config = Configuration(config_file_path)
-    cal_db = Calendars(config)
-    todos = cal_db.get_todos(["calendar:test1"])
+    cal_db = TodoDatabase(config)
+    todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["list:test1"]))
     assert len(todos) == 1
-    todos = cal_db.get_todos(["calendar:test2"])
+    todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["list:test2"]))
     assert len(todos) == 0
 
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "move", "1", "test2"])
     assert result.exit_code == 0
 
-    cal_db = Calendars(config)
-    todos = cal_db.get_todos(["calendar:test1"])
+    cal_db = TodoDatabase(config)
+    todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["list:test1"]))
     assert len(todos) == 0
-    todos = cal_db.get_todos(["calendar:test2"])
+    todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["list:test2"]))
     assert len(todos) == 1
 
     remove_dummy_calendars(tmp_dir, config_file_path)
 
+def test_invalid_config_file():
+
+    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+
+    config_file = open(config_file_path, "w")
+    config_file.write('foo: "Hello')
+    config_file.flush()
+
+    runner = CliRunner()
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask"])
+    assert result.exit_code != 0
+
+def test_nonexistent_lists_dir():
+
+    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+
+    config_file = open(config_file_path, "w")
+    config_file.write('lists_dir: /nonexistent')
+    config_file.flush()
+
+    runner = CliRunner()
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask"])
+    assert result.exit_code != 0

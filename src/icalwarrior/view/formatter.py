@@ -7,9 +7,10 @@ import datetime
 import humanize
 import dateutil.tz as tz
 
-from icalwarrior.todo import TodoPropertyHandler
+from icalwarrior.model.items import TodoModel
 from icalwarrior.configuration import Configuration
-from icalwarrior.util import adapt_datetype
+from icalwarrior.input.date import adapt_datetype
+from icalwarrior.filtering.constraints import ConstraintEvaluator
 
 class StringFormatter:
 
@@ -30,7 +31,7 @@ class StringFormatter:
         return result
 
 
-    def format_property_value(self, prop_name : str, todo : TodoPropertyHandler) -> str:
+    def format_property_value(self, prop_name : str, todo : TodoModel) -> str:
 
         result = ""
 
@@ -62,12 +63,12 @@ class StringFormatter:
                 #       We therefore convert it manually.
                 result = ",".join([str(c) for c in todo.get_categories()])
 
-        if prop_name in todo.get_context():
+        if prop_name in todo.CONTEXT_PROPERTIES:
 
-            if prop_name in TodoPropertyHandler.TEXT_FILTER_PROPERTIES:
-                result = str(todo.get_context()[prop_name])
+            if prop_name in ConstraintEvaluator.TEXT_FILTER_PROPERTIES:
+                result = str(todo.get_context(prop_name))
 
-            elif prop_name in TodoPropertyHandler.INT_FILTER_PROPERTIES:
-                result = str(todo.get_context()[prop_name])
+            elif prop_name in ConstraintEvaluator.INT_FILTER_PROPERTIES:
+                result = str(todo.get_context(prop_name))
 
         return result

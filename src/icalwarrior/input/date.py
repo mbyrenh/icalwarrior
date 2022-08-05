@@ -8,7 +8,6 @@ import calendar
 import datetime
 from dateutil.relativedelta import relativedelta
 import dateutil.tz as tz
-import icalendar
 import icalwarrior.constants as constants
 from icalwarrior.configuration import Configuration
 

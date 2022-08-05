@@ -2,13 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import sys
 import os.path
 import os
 import subprocess
 from tempfile import NamedTemporaryFile, gettempdir
 
-from typing import List, cast, Optional
+from typing import List, Optional
 
 import json
 import click
@@ -16,16 +15,16 @@ import colorama
 import tableformatter
 import datetime
 from termcolor import colored
-from icalwarrior.configuration import Configuration, UnknownConfigurationOptionError
-from icalwarrior.calendars import Calendars
-from icalwarrior.todo import TodoPropertyHandler
-from icalwarrior.util import expand_prefix, decode_date
-from icalwarrior.args import decode_raw_arg_list
+from icalwarrior.configuration import Configuration
+from icalwarrior.model.items import TodoModel
+from icalwarrior.model.lists import TodoDatabase
+from icalwarrior.input.date import expand_prefix, decode_date
+from icalwarrior.input.cli import decode_property_list
 from icalwarrior.view.formatter import StringFormatter
 from icalwarrior.view.tagger import DueDateBasedTagger
 from icalwarrior.view.tabular import TabularToDoListView, TabularPrinter, TabularToDoView
 from icalwarrior.view.sorter import ToDoSorter
-from icalwarrior.filter import Constraint
+from icalwarrior.filtering.constraints import ConstraintEvaluator
 
 class InvalidArgumentException(Exception):
 
@@ -77,68 +76,72 @@ def run_cli(ctx: click.Context, config: str) -> None:
 
 @run_cli.command(short_help="Show summary statistics about the calendars icalwarrior is aware of.")
 @click.pass_context
-def calendars(ctx: click.Context) -> None:
-    cal = Calendars(ctx.obj['config'])
+def lists(ctx: click.Context) -> None:
+    config = ctx.obj['config']
+    cal = TodoDatabase(config)
 
     cols = ["Name", "Path", "Total number of todos", "Number of completed todos"]
     rows : List[List[str]] = []
 
-    cal_db = Calendars(ctx.obj['config'])
-    for name in cal.get_calendars():
-        path = os.path.join(ctx.obj['config'].get_calendar_dir(), name)
-        todos = cal_db.get_todos(["cal:" + name])
-        completed_todos = cal_db.get_todos(["cal:" + name, "and", "status:completed"])
+    cal_db = TodoDatabase(config)
+    for name in cal.get_list_names():
+        path = os.path.join(config.get_lists_dir(), name)
+        todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["cal:" + name]))
+        completed_todos = cal_db.get_todos(
+            ConstraintEvaluator.from_string_list(
+                config, ["cal:" + name, "and", "status:completed"]))
         rows.append([name, path, str(len(todos)), str(len(completed_todos))])
 
     printer = TabularPrinter(rows, cols, 0, tableformatter.WrapMode.WRAP, None)
     printer.print()
 
-@run_cli.command(short_help="Add a new todo item to a calendar.")
+@run_cli.command(short_help="Add a new todo item to a list.")
 @click.pass_context
-@click.argument('calendar', nargs=1, required=True)
+@click.argument('list_name', nargs=1, required=True)
 @click.argument('summary', nargs=1, required=True)
 @click.argument('properties', nargs=-1)
-def add(ctx: click.Context, calendar: str, summary: str, properties: List[str]) -> None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if len(cal_db.get_calendars()) == 0:
+def add(ctx: click.Context, list_name: str, summary: str, properties: List[str]) -> None:
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if len(cal_db.get_list_names()) == 0:
         fail(ctx, "No calendars found. Please check your configuration.")
 
-    calendar_name = expand_prefix(calendar, cal_db.get_calendars())
-    if calendar_name == "":
-        fail(ctx, "Unknown calendar \"" + calendar + ". Known calendars are " + ", ".join(cal_db.get_calendars()) + ".")
+    full_list_name = expand_prefix(list_name, cal_db.get_list_names())
+    if full_list_name == "":
+        fail(ctx, "Unknown list name or prefix \"" + list_name + ". Known lists are " + ", ".join(cal_db.get_list_names()) + ".")
 
     if len(summary) == 0:
         fail(ctx, "Summary text must be non-empty.")
 
     todo = None
     try:
-        todo = TodoPropertyHandler(ctx.obj['config'], cal_db.create_todo())
-        property_dict = decode_raw_arg_list(ctx.obj['config'], ['summary:' + summary, 'status:needs-action'] + [p for p in properties])
+        todo = TodoModel(config, cal_db.create_todo())
+        property_dict = decode_property_list(config, ['summary:' + summary, 'status:needs-action'] + [p for p in properties])
+        print(property_dict)
         todo.set_properties(property_dict)
-        cal_db.write_todo(calendar_name, todo.get_ical_todo())
+        cal_db.get_list(full_list_name).add(todo.get_ical_todo())
     except Exception as err:
         fail(ctx, str(err))
 
     assert todo is not None
     # Re-read calendars to trigger id generation of todo
     uid = todo.get_string('uid')
-    cal_db = Calendars(ctx.obj['config'])
-    todo = cal_db.get_todos(["uid:" + uid])[0]
+    cal_db = TodoDatabase(config)
+    todo = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["uid:" + uid]))[0]
 
-    success("Successfully created new todo \"" + todo.get_string('summary') + "\" with ID " + str(todo.get_context()["id"]) + ".")
+    success("Successfully created new todo \"" + todo.get_string('summary') + "\" with ID " + str(todo.get_context("id")) + ".")
 
 @run_cli.command(short_help="Modify an existing todo item.")
 @click.pass_context
 @click.argument('identifier', nargs=1, type=int)
 @click.argument('properties',nargs=-1)
 def modify(ctx: click.Context, identifier: int, properties: List[str]) ->  None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if len(cal_db.get_calendars()) == 0:
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if len(cal_db.get_list_names()) == 0:
         fail(ctx,"No calendars found. Please check your configuration.")
 
-    todos = cal_db.get_todos(["id:"+str(identifier)])
+    todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["id:"+str(identifier)]))
 
     if len(todos) == 0:
         fail(ctx,"Invalid identifier " + str(identifier) + ".")
@@ -146,13 +149,13 @@ def modify(ctx: click.Context, identifier: int, properties: List[str]) ->  None:
     todo = todos[0]
     try:
 
-        property_changes = decode_raw_arg_list(ctx.obj['config'], properties)
+        property_changes = decode_property_list(config, properties)
         todo.set_properties(property_changes)
 
-        cal_name = str(todo.get_context()['calendar'])
-        todo_id = str(todo.get_context()['id'])
+        cal_name = str(todo.get_context('list'))
+        todo_id = str(todo.get_context('id'))
 
-        cal_db.write_todo(cal_name, todo.get_ical_todo())
+        cal_db.get_list(cal_name).add(todo.get_ical_todo())
     except Exception as err:
         fail(ctx,str(err))
     success("Successfully modified todo " + todo_id + ".")
@@ -162,15 +165,15 @@ def modify(ctx: click.Context, identifier: int, properties: List[str]) ->  None:
 @click.argument('name',nargs=1,default="default")
 @click.argument('constraints',nargs=-1)
 def report(ctx: click.Context, name: str, constraints: List[str]) -> None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if len(cal_db.get_calendars()) == 0:
-        fail(ctx,"No calendars found. Please check your configuration.")
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if len(cal_db.get_list_names()) == 0:
+        fail(ctx,"No lists found. Please check your configuration.")
 
     # Check if the report exists
     # and if it exists, extract columns
     # and constraints
-    reports = ctx.obj['config'].get_config(['reports'])
+    reports = config.get_config(['reports'])
 
     report_expanded = expand_prefix(name, reports.keys())
 
@@ -184,7 +187,9 @@ def report(ctx: click.Context, name: str, constraints: List[str]) -> None:
             constraints = reports[report_expanded]['constraint'].split(" ")
 
     try:
-        todos = cal_db.get_todos(constraints)
+
+        constraint_evaluator = ConstraintEvaluator.from_string_list(config, constraints)
+        todos = cal_db.get_todos(constraint_evaluator)
         todos = ToDoSorter(todos, "due").get_sorted()
 
         row_limit = len(todos)
@@ -192,9 +197,9 @@ def report(ctx: click.Context, name: str, constraints: List[str]) -> None:
         if 'max_list_length' in reports[report_expanded]:
             row_limit = min(reports[report_expanded]['max_list_length'], row_limit)
 
-        formatter = StringFormatter(ctx.obj['config'])
+        formatter = StringFormatter(config)
         tagger = DueDateBasedTagger(todos, datetime.timedelta(days=7), datetime.timedelta(days=1))
-        view = TabularToDoListView(ctx.obj['config'], report_expanded, todos, formatter, tagger)
+        view = TabularToDoListView(config, report_expanded, todos, formatter, tagger)
         view.show()
         hint("Showing " + str(row_limit) + " out of " + str(len(todos)) + " todos.")
     except Exception as err:
@@ -204,15 +209,15 @@ def report(ctx: click.Context, name: str, constraints: List[str]) -> None:
 @click.pass_context
 @click.argument('ids',nargs=-1,required=True)
 def done(ctx: click.Context, ids: List[str]) -> None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if len(cal_db.get_calendars()) == 0:
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if len(cal_db.get_list_names()) == 0:
         fail(ctx,"No calendars found. Please check your configuration.")
 
     # first, check if all ids are valid
     pending_todos = []
     for i in ids:
-        todos = cal_db.get_todos(["id:"+i])
+        todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["id:"+i]))
 
         if len(todos) == 0:
             fail(ctx,"Invalid identifier " + i + ".")
@@ -225,8 +230,8 @@ def done(ctx: click.Context, ids: List[str]) -> None:
                 'status': 'COMPLETED', 
                 'percent-complete': 100, 
                 'completed': datetime.datetime.now()})
-            todo_id = todo.get_context()['id']
-            cal_db.write_todo(str(todo.get_context()['calendar']), todo.get_ical_todo())
+            todo_id = todo.get_context('id')
+            cal_db.get_list(str(todo.get_context('list'))).add(todo.get_ical_todo())
             success("Set status of todo " + str(todo_id) + " to COMPLETED.")
     except Exception as err:
         fail(ctx, str(err))
@@ -236,10 +241,10 @@ def done(ctx: click.Context, ids: List[str]) -> None:
 @click.pass_context
 @click.argument('ids',nargs=-1,required=True)
 def delete(ctx: click.Context, ids: List[str]) -> None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if len(cal_db.get_calendars()) == 0:
-        fail(ctx,"No calendars found. Please check your configuration.")
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if len(cal_db.get_list_names()) == 0:
+        fail(ctx,"No lists found. Please check your configuration.")
 
     constraints : List[str] = []
     for idnum in ids:
@@ -249,7 +254,7 @@ def delete(ctx: click.Context, ids: List[str]) -> None:
         constraints.append("id:" + idnum)
 
     try:
-       todos = cal_db.get_todos(constraints)
+       todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, constraints))
     except Exception as err:
         fail(ctx,str(err))
 
@@ -258,27 +263,27 @@ def delete(ctx: click.Context, ids: List[str]) -> None:
 
     for todo in todos:
         try:
-            if click.confirm('Delete todo ' + str(todo.get_context()['id']) + ' "' + todo.get_string('summary') + '"?'):
-                cal_db.delete_todo(todo.get_ical_todo())
-                success("Successfully deleted todo " + str(todo.get_context()['id']))
+            if click.confirm('Delete todo ' + str(todo.get_context('id')) + ' "' + todo.get_string('summary') + '"?'):
+                cal_db.get_list(str(todo.get_context('list'))).delete(todo.get_ical_todo())
+                success("Successfully deleted todo " + str(todo.get_context('id')))
         except Exception as err:
             fail(ctx,str(err))
 
-@run_cli.command(short_help="Move a todo item from one calendar to another.")
+@run_cli.command(short_help="Move a todo item from one list to another.")
 @click.pass_context
 @click.argument('identifier',type=int,required=True)
 @click.argument('destination',required=True)
 def move(ctx: click.Context, identifier: int, destination: str) -> None:
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(ctx.obj['config'])
 
-    cal_db = Calendars(ctx.obj['config'])
-
-    if destination not in cal_db.get_calendars():
-        fail(ctx,"Unknown calendar \"" + destination +"\".")
+    if destination not in cal_db.get_list_names():
+        fail(ctx,"Unknown list \"" + destination +"\".")
 
     constraints = ["id:" + str(identifier)]
 
     try:
-       todos = cal_db.get_todos(constraints)
+       todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, constraints))
     except Exception as err:
         fail(ctx,str(err))
 
@@ -286,44 +291,46 @@ def move(ctx: click.Context, identifier: int, destination: str) -> None:
         fail(ctx,"No todo with identifier " + str(identifier) + " has been found.")
 
     try:
-        source = str(todos[0].get_context()['calendar'])
-        cal_db.move_todo(todos[0].get_string('uid'), source, destination)
+        todo = todos[0]
+        source = str(todo.get_context('list'))
+        cal_db.get_list(source).delete(todo.get_ical_todo())
+        cal_db.get_list(destination).add(todo.get_ical_todo())
     except Exception as err:
         fail(ctx,str(err))
-    success("Successfully moved todo to calendar " + destination)
+    success("Successfully moved todo to list " + destination)
 
 @run_cli.command(short_help="Print a summary of a single todo item.")
 @click.pass_context
 @click.argument('identifier',nargs=1,required=True, type=int)
 def show(ctx: click.Context, identifier: int) -> None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if len(cal_db.get_calendars()) == 0:
-        fail(ctx,"No calendars found. Please check your configuration.")
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if len(cal_db.get_list_names()) == 0:
+        fail(ctx,"No lists found. Please check your configuration.")
 
     try:
-        todos = cal_db.get_todos(['id:' + str(identifier)])
+        todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ['id:' + str(identifier)]))
     except Exception as err:
         fail(ctx,str(err))
 
     if len(todos) < 1:
         fail(ctx,"Unknown identifier.")
 
-    formatter = StringFormatter(ctx.obj['config'])
-    todoView = TabularToDoView(ctx.obj['config'], todos[0], formatter)
+    formatter = StringFormatter(config)
+    todoView = TabularToDoView(config, todos[0], formatter)
     todoView.show()
 
 @run_cli.command(short_help="Change the description text of a todo item.")
 @click.pass_context
 @click.argument('identifier',nargs=1,required=True, type=int)
 def description(ctx: click.Context, identifier: int) -> None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if len(cal_db.get_calendars()) == 0:
-        fail(ctx,"No calendars found. Please check your configuration.")
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if len(cal_db.get_list_names()) == 0:
+        fail(ctx,"No lists found. Please check your configuration.")
 
     try:
-        todos = cal_db.get_todos(['id:' + str(identifier)])
+        todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ['id:' + str(identifier)]))
     except Exception as err:
         fail(ctx,str(err))
 
@@ -358,8 +365,8 @@ def description(ctx: click.Context, identifier: int) -> None:
             todo.unset_property("description")
 
         todo.set_properties({'description' : new_desc})
-        cal_name = str(todo.get_context()['calendar'])
-        cal_db.write_todo(cal_name, todo.get_ical_todo())
+        list_name = str(todo.get_context('list'))
+        cal_db.get_list(list_name).add(todo.get_ical_todo())
         success("Successfully updated description.")
 
     os.remove(tmp_file_path)
@@ -368,52 +375,53 @@ def description(ctx: click.Context, identifier: int) -> None:
 @click.pass_context
 @click.argument('expr',nargs=1,required=True)
 def calculate(ctx: click.Context, expr: str) -> None:
+    config = ctx.obj['config']
     try:
-        result = decode_date(expr, ctx.obj['config'])
+        result = decode_date(expr, config)
     except Exception as err:
         fail(ctx,str(err))
-    print(result.strftime(ctx.obj['config'].get_datetime_format()))
+    print(result.strftime(config.get_datetime_format()))
 
 
-@run_cli.command(short_help="Delete all completed todo items in a given calendar.")
+@run_cli.command(short_help="Delete all completed todo items in a given list.")
 @click.pass_context
-@click.argument('calendar',required=True)
-def cleanup(ctx: click.Context, calendar: str) -> None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if calendar not in cal_db.get_calendars():
-        fail(ctx,"Calendar + " + calendar + " not found. Please check your configuration.")
+@click.argument('list',required=True)
+def cleanup(ctx: click.Context, list_name: str) -> None:
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if list_name not in cal_db.get_list_names():
+        fail(ctx,"Calendar + " + list_name + " not found. Please check your configuration.")
 
     try:
-        todos = cal_db.get_todos(["calendar:"+calendar, "and", "status:completed"])
+        todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, ["list:" + list_name, "and", "status:completed"]))
     except Exception as err:
         fail(ctx,str(err))
 
     if len(todos) == 0:
-        hint("No completed todos found in calendar " + calendar + ".")
+        hint("No completed todos found in list " + list_name + ".")
     else:
-        if click.confirm('Delete ' + str(len(todos)) + ' completed todos from calendar ' + calendar +'?'):
+        if click.confirm('Delete ' + str(len(todos)) + ' completed todos from list ' + list_name + '?'):
             for todo in todos:
                 try:
-                    cal_db.delete_todo(todo.get_ical_todo())
+                    cal_db.get_list(str(todo.get_context('list'))).delete(todo.get_ical_todo())
                 except Exception as err:
                     fail(ctx,str(err))
-                success("Successfully deleted todo " + str(todo.get_context()['id']))
+                success("Successfully deleted todo " + str(todo.get_context('id')))
 
         else:
-            hint("No todos deleted from " + calendar + ".")
+            hint("No todos deleted from " + list_name + ".")
 
 @run_cli.command(short_help="Print a JSON representation of all todos satisfying a given filter expression.")
 @click.pass_context
 @click.argument('constraints',nargs=-1)
 def export(ctx: click.Context, constraints: List[str]) -> None:
-
-    cal_db = Calendars(ctx.obj['config'])
-    if len(cal_db.get_calendars()) == 0:
-        fail(ctx,"No calendars found. Please check your configuration.")
+    config = ctx.obj['config']
+    cal_db = TodoDatabase(config)
+    if len(cal_db.get_list_names()) == 0:
+        fail(ctx,"No lists found. Please check your configuration.")
 
     try:
-       todos = cal_db.get_todos(constraints)
+       todos = cal_db.get_todos(ConstraintEvaluator.from_string_list(config, constraints))
     except Exception as err:
         fail(ctx,str(err))
 
@@ -438,15 +446,15 @@ def info() -> None:
 def properties() -> None:
     columns = ["Property", "Allowed values"]
     rows = []
-    for prop in TodoPropertyHandler.supported_properties():
-        if prop in TodoPropertyHandler.DATE_PROPERTIES:
+    for prop in TodoModel.supported_properties():
+        if prop in TodoModel.DATE_PROPERTIES:
             rows += [[prop, "Any date"]]
-        elif prop in TodoPropertyHandler.TEXT_PROPERTIES:
+        elif prop in TodoModel.TEXT_PROPERTIES:
             rows += [[prop, "Any text"]]
-        elif prop in TodoPropertyHandler.INT_PROPERTIES:
+        elif prop in TodoModel.INT_PROPERTIES:
             rows += [[prop, "Any integer"]]
-        elif prop in TodoPropertyHandler.ENUM_PROPERTIES:
-            rows += [[prop, ", ".join(TodoPropertyHandler.ENUM_VALUES[prop])]]
+        elif prop in TodoModel.ENUM_PROPERTIES:
+            rows += [[prop, ", ".join(TodoModel.ENUM_VALUES[prop])]]
 
     output = TabularPrinter(rows, columns, 0, tableformatter.WrapMode.WRAP, None)
     output.print()
@@ -455,13 +463,13 @@ def properties() -> None:
 def filter() -> None:
     columns = ["Property", "Supported filter operators"]
     rows = []
-    for prop in TodoPropertyHandler.supported_filter_properties():
-        if prop in TodoPropertyHandler.DATE_PROPERTIES:
-            rows += [[prop, ", ".join(Constraint.DATE_OPERATORS.keys())]]
-        elif prop in TodoPropertyHandler.TEXT_PROPERTIES or prop in TodoPropertyHandler.TEXT_FILTER_PROPERTIES or prop in TodoPropertyHandler.ENUM_PROPERTIES:
-            rows += [[prop, ", ".join(Constraint.TEXT_OPERATORS.keys())]]
-        elif prop in TodoPropertyHandler.INT_PROPERTIES or prop in TodoPropertyHandler.INT_FILTER_PROPERTIES:
-            rows += [[prop, ", ".join(Constraint.INT_OPERATORS.keys())]]
+    for prop in ConstraintEvaluator.supported_filter_properties():
+        if prop in TodoModel.DATE_PROPERTIES:
+            rows += [[prop, ", ".join(ConstraintEvaluator.DATE_OPERATORS.keys())]]
+        elif prop in TodoModel.TEXT_PROPERTIES or prop in ConstraintEvaluator.TEXT_FILTER_PROPERTIES or prop in TodoModel.ENUM_PROPERTIES:
+            rows += [[prop, ", ".join(ConstraintEvaluator.TEXT_OPERATORS.keys())]]
+        elif prop in TodoModel.INT_PROPERTIES or prop in ConstraintEvaluator.INT_FILTER_PROPERTIES:
+            rows += [[prop, ", ".join(ConstraintEvaluator.INT_OPERATORS.keys())]]
 
     output = TabularPrinter(rows, columns, 0, tableformatter.WrapMode.WRAP, None)
     output.print()

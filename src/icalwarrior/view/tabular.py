@@ -2,14 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from typing import List, Set, Union, Callable, Optional, Dict
+from typing import List, Union, Callable, Optional, Dict
 import tableformatter
-from colorama import init, Fore, Back, Style
-import icalendar
+from colorama import Back, Style
 
 from icalwarrior.view.formatter import StringFormatter
 from icalwarrior.view.tagger import Tagger
-from icalwarrior.todo import TodoPropertyHandler
+from icalwarrior.model.items import TodoModel
 from icalwarrior.configuration import Configuration
 
 class ReportGrid(tableformatter.Grid):
@@ -123,7 +122,7 @@ class TabularToDoListView:
         self,
         config : Configuration,
         report_name : str,
-        todos : List[TodoPropertyHandler],
+        todos : List[TodoModel],
         property_formatter : StringFormatter,
         row_tagger : Tagger) -> None:
 
@@ -171,7 +170,7 @@ class TabularToDoListView:
 
 class TabularToDoView:
 
-    def __init__(self, config : Configuration, todo : TodoPropertyHandler, formatter : StringFormatter) -> None:
+    def __init__(self, config : Configuration, todo : TodoModel, formatter : StringFormatter) -> None:
         self.config = config
         self.todo = todo
         self.formatter = formatter

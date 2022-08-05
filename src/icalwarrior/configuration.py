@@ -6,6 +6,7 @@ from typing import List, Any
 from pathlib import Path
 import yaml
 
+from yaml.scanner import ScannerError
 import icalwarrior.constants as constants
 
 class UnknownConfigurationOptionError(Exception):
@@ -16,12 +17,23 @@ class UnknownConfigurationOptionError(Exception):
     def __str__(self) -> str:
         return "Unknown configuration option \"" + self.option + "\""
 
+class InvalidConfigurationFileError(Exception):
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+    def __str__(self) -> str:
+        return "Config file " + self.path + " is not a valid YAML file."
 
 class Configuration:
 
     def __init__(self, configFile : str) -> None:
         config_handle = open(configFile)
-        self.config = yaml.load(config_handle, Loader=yaml.Loader)
+
+        try:
+            self.config = yaml.load(config_handle, Loader=yaml.Loader)
+        except ScannerError as err:
+            raise InvalidConfigurationFileError(configFile) from err
         config_handle.close()
 
     @staticmethod
@@ -39,15 +51,15 @@ class Configuration:
 
         return option
 
-    def get_calendar_dir(self) -> str:
-        """Returns the path to a directory containing calendar directories."""
+    def get_lists_dir(self) -> str:
+        """Returns the path to a directory containing todo list directories."""
 
         result = []
-        if 'calendars' in self.config:
-            result = self.config['calendars']
+        if 'lists_dir' in self.config:
+            result = self.config['lists_dir']
 
         if not isinstance(result, str):
-            raise Exception("Non-string type returned for 'calendars' configuration value.")
+            raise Exception("Non-string type returned for 'lists_dir' configuration value.")
 
         return result
 
