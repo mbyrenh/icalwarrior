@@ -101,12 +101,12 @@ todo add home "Buy groceries" due:friday+1week
 ```
 or, more simply
 ```text
-todo a h "Buy groceries" due:f+1w.
+todo a h "Buy groceries" due:f+1w
 ```
 
 To see a complete list of supported relative date specifications and calculation units, one can run
 ```text
-todo info dates.
+todo info dates
 ```
 
 ### Caveats
