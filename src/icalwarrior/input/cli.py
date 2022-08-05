@@ -101,6 +101,9 @@ def decode_property_list(config : Configuration, raw_properties : List[str]) -> 
 
         elif argtype == ArgType.STRING:
 
+            if 'summary' in result:
+                raise Exception("Unable to detect property from argument " + arg)
+
             # Ensure that we do not write an empty
             # summary.
             if len(arg) == 0:
