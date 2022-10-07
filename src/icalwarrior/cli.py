@@ -437,7 +437,7 @@ def calculate(ctx: click.Context, expr: str) -> None:
 
 @run_cli.command(short_help="Delete all completed todo items in a given list.")
 @click.pass_context
-@click.argument('list',required=True)
+@click.argument('list_name',required=True)
 def cleanup(ctx: click.Context, list_name: str) -> None:
     config = ctx.obj['config']
 

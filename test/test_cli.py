@@ -340,3 +340,29 @@ def test_nonexistent_lists_dir():
     runner = CliRunner()
     result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask"])
     assert result.exit_code != 0
+
+def test_list_cleanup():
+
+    tmp_dir, config_file_path = setup_dummy_calendars(["test"])
+
+    runner = CliRunner()
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask"])
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask 2"])
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "add", "test", "Testtask 3"])
+    assert result.exit_code == 0
+
+    config = Configuration(config_file_path)
+    cal_db = TodoDatabase(config)
+    todos = cal_db.get_todos()
+    assert len(todos) == 3
+
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "done", "1", "3"])
+    assert result.exit_code == 0
+
+    result = runner.invoke(run_cli, ["-c", str(config_file_path), "cleanup", "test"], input="y")
+    assert result.exit_code == 0
+
+    config = Configuration(config_file_path)
+    cal_db = TodoDatabase(config)
+    todos = cal_db.get_todos()
+    assert len(todos) == 1
